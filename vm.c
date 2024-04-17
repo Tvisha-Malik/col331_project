@@ -320,7 +320,7 @@ copyuvm(pde_t *pgdir, uint sz)
   uint pa, i, flags;
   char *mem;
 
-  if((d = setupkvm()) == 0)
+  if((d = setupkvm()) == 0)// this is necessary as page tables and page directories are allocated (they are not shared)
     return 0;
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
@@ -328,12 +328,14 @@ copyuvm(pde_t *pgdir, uint sz)
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
     pa = PTE_ADDR(*pte);
-    flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto bad;
-    memmove(mem, (char*)P2V(pa), PGSIZE);
-    if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
-      kfree(mem);
+    *pte=*pte&(~PTE_W);// unset the writeable permissions
+    flags = PTE_FLAGS(*pte);// neeed to set both as unwriteable and shared
+    
+    // if((mem = kalloc()) == 0) // not allocating a new page instead coping the page table enteries
+    //   goto bad;
+    // memmove(mem, (char*)P2V(pa), PGSIZE);
+    if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0) {
+      // kfree(mem);
       goto bad;
     }
   }

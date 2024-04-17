@@ -54,4 +54,13 @@ struct dirent {
   ushort inum;
   char name[DIRSIZ];
 };
-
+// represents eight consecutive disk blocks to store a page
+struct swap_slot
+{
+  uint dev;   // Device number
+  uint start; // Start block number
+  int page_perm;
+  int is_free;
+  // int pid;// for cleaning up the swap slots after process ends
+};
+#define SWAPSTART 2
