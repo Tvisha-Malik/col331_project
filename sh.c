@@ -127,6 +127,7 @@ runcmd(struct cmd *cmd)
       runcmd(bcmd->cmd);
     break;
   }
+    printf(2, "end of runcmd %d \n",cmd->type);
   exit();
 }
 
@@ -175,11 +176,13 @@ main(void)
      printf(2, "after first if\n"); 
     if(fork1() == 0)
      {
-      printf(2, "fork1 successful\n"); 
+      // printf(2, "fork1 successful\n"); 
       runcmd(parsecmd(buf));}
       // printf(2, "fork1 unsuccessful\n"); 
     wait();
+    // printf(2, "sh woke up\n"); 
   }
+  printf(2, "sh exiting\n"); 
   exit();
 }
 

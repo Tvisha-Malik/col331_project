@@ -37,9 +37,9 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
   pde_t *pde;
   pte_t *pgtab;
-
+  //  cprintf("start of walk dir\n");
   pde = &pgdir[PDX(va)];
-   cprintf("start of walk dir\n");
+
   if(*pde & PTE_P){
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
   } else {
@@ -337,6 +337,7 @@ copyuvm(pde_t *pgdir, uint sz)
     pa = PTE_ADDR(*pte);
     *pte=*pte&(~PTE_W);// unset the writeable permissions
     flags = PTE_FLAGS(*pte);// neeed to set both as unwriteable and shared
+  
     
     // if((mem = kalloc()) == 0) // not allocating a new page instead coping the page table enteries
     //   goto bad;
@@ -346,6 +347,7 @@ copyuvm(pde_t *pgdir, uint sz)
       // kfree(mem);
       goto bad;
     }
+
   }
   return d;
 

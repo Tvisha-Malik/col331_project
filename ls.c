@@ -68,7 +68,9 @@ ls(char *path)
     }
     break;
   }
+    
   close(fd);
+ 
 }
 
 int
@@ -82,5 +84,6 @@ main(int argc, char *argv[])
   }
   for(i=1; i<argc; i++)
     ls(argv[i]);
+   printf(2,"end ls\n");
   exit();
 }

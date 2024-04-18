@@ -24,8 +24,8 @@ void swap_or_cow(void)
         panic("Invalid page fault zero");
         return;
     }
-   
-    if (!(*pgdir_adr & PTE_P))// page swappedout (swap it in)
+    cprintf("the value is for present %d \n", (*pgdir_adr & PTE_P));
+    if ((*pgdir_adr & PTE_P)!=1)// page swappedout (swap it in)
     {
       cprintf("in not present\n");
     //    uint block_id = (*pgdir_adr >> PTXSHIFT);
@@ -42,8 +42,9 @@ void swap_or_cow(void)
     // swapfree(ROOTDEV, block_id);
     }
     //  cprintf("here 2\n");
-    //  cprintf("the page is %d \n", *pgdir_adr);
-    if (!(*pgdir_adr & PTE_W))// shared page
+     cprintf("the value is (writeable)%d \n", (*pgdir_adr & PTE_W));
+     cprintf("the value is (user accessible)%d \n", (*pgdir_adr & PTE_U));
+    if ((*pgdir_adr & PTE_W)!=2)// shared page
     {
        cprintf("here 2 inside\n");
          pa = PTE_ADDR(*pgdir_adr);
