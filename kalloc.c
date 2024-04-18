@@ -66,8 +66,16 @@ kfree(char *v)
 {
   struct run *r;
 
-  if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
-    panic("kfree");
+  // if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
+  //   panic("kfree");
+  // Convert the above if statement into 3 separate panic statements indicating each case
+	if ((uint)v % PGSIZE)
+		panic("kfree: v is not a multiple of PGSIZE");
+	if (v < end)
+		panic("kfree: v is less than end");
+	if (V2P(v) >= PHYSTOP)
+		panic("kfree: V2P(v) is greater than or equal to PHYSTOP");
+	  
 
   // Fill with junk to catch dangling refs.
   memset(v, 1, PGSIZE);

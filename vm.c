@@ -39,7 +39,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
   pte_t *pgtab;
 
   pde = &pgdir[PDX(va)];
-   cprintf("start of walk dir\n");
+   // cprintf("start of walk dir\n");
   if(*pde & PTE_P){
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
   } else {
@@ -79,6 +79,63 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
     pa += PGSIZE;
   }
   return 0;
+}
+
+// void
+// uvmunmap(pde_t * pagetable, uint64 va, uint64 npages, int do_free)
+// {
+//   uint64 a;
+//   pte_t *pte;
+// 	cprintf("uvmunmap called\n");
+//
+//   if((va % PGSIZE) != 0)
+//     panic("uvmunmap: not aligned");
+//
+//   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
+//     if((pte = walkpgdir(pagetable, &a, 0)) == 0)
+//       panic("uvmunmap: walk");
+//     if((*pte & PTE_P) == 0)
+//       panic("uvmunmap: not mapped");
+//     if(PTE_FLAGS(*pte) == PTE_P)
+//       panic("uvmunmap: not a leaf");
+//     if(do_free){
+//       char* pa = P2V(PTE_ADDR(*pte));
+//       kfree((void*)pa);
+//     }
+//     *pte = 0;
+//   }
+// }
+
+void
+uvmunmap(pde_t* pagetable, void* va, uint64 size, int do_free)
+{
+  uint a, last;
+  pte_t *pte;
+  uint pa;
+
+  a = PGROUNDDOWN((uint)va);
+  last = PGROUNDDOWN(((uint)va) + size - 1);
+  for(;;){
+    if((pte = walkpgdir(pagetable, &a, 0)) == 0)
+      panic("uvmunmap: walk");
+    if((*pte & PTE_P) == 0){
+      // printf("va=%p pte=%p\n", a, *pte);
+      panic("uvmunmap: not mapped");
+    }
+    if(PTE_FLAGS(*pte) == PTE_P)
+      panic("uvmunmap: not a leaf");
+    if(do_free){
+      pa = (PTE_ADDR(*pte));
+	  char *v = P2V(pa);
+      // pa = PTE2PA(*pte);
+      kfree(v);
+    }
+    *pte = 0;
+    if(a == last)
+      break;
+    a += PGSIZE;
+    pa += PGSIZE;
+  }
 }
 
 // There is one page table per process, plus one that's used when
@@ -329,13 +386,31 @@ copyuvm(pde_t *pgdir, uint sz)
 
   if((d = setupkvm()) == 0)// this is necessary as page tables and page directories are allocated (they are not shared)
     return 0;
+  // for(i = 0; i < sz; i += PGSIZE){
+  //   if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
+  //     panic("copyuvm: pte should exist");
+  //   if(!(*pte & PTE_P))
+  //     panic("copyuvm: page not present");
+  //   pa = PTE_ADDR(*pte);
+  //   flags = PTE_FLAGS(*pte);
+  //   if ((mem = kalloc()) == 0)// a new page for the content
+  //     goto bad;
+  //   // curproc->rss+=PGSIZE;
+  //   memmove(mem, (char *)P2V(pa), PGSIZE);// copy the page data
+  //   if (mappages(d, (void *)i, PGSIZE, V2P(mem), flags) < 0)// add the entries in page directory and page table
+  //   { //page table pages allocated if necessary
+  //
+  //     kfree(mem);
+  //     goto bad;
+  //   }
+  // }
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
     pa = PTE_ADDR(*pte);
-    *pte=*pte&(~PTE_W);// unset the writeable permissions
+    *pte=(*pte)&(~PTE_W);// unset the writeable permissions
     flags = PTE_FLAGS(*pte);// neeed to set both as unwriteable and shared
     
     // if((mem = kalloc()) == 0) // not allocating a new page instead coping the page table enteries
@@ -343,6 +418,13 @@ copyuvm(pde_t *pgdir, uint sz)
     // memmove(mem, (char*)P2V(pa), PGSIZE);
     // no need to update rss here as no new pages are allocated
     if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0) {
+      // kfree(mem);
+      goto bad;
+    }
+
+	uvmunmap(d, (void*)i, 1, 0);
+
+    if(mappages(pgdir, (void*)i, PGSIZE, pa, flags) < 0) {
       // kfree(mem);
       goto bad;
     }
