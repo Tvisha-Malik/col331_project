@@ -21,7 +21,8 @@ void            consoleinit(void);
 void            cprintf(char*, ...);
 void            consoleintr(int(*)(void));
 void            panic(char*) __attribute__((noreturn));
-
+// cow
+void swap_or_cow(void);
 // exec.c
 int             exec(char*, char**);
 
@@ -187,8 +188,8 @@ void            kvmalloc(void);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
 int             allocuvm(pde_t*, uint, uint);
-int             deallocuvm(pde_t*, uint, uint);
-void            freevm(pde_t*);
+int             deallocuvm(pde_t*, uint, uint,int);
+void            freevm(pde_t*,int);
 void            inituvm(pde_t*, char*, uint);
 int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
 pde_t*          copyuvm(pde_t*, uint);

@@ -46,7 +46,7 @@ void swap_or_cow(void)
       {
         panic("can kalloc in swap_or_cow\n");
       }
-
+    p->rss+=PGSIZE;// as new pages is allocated (take care of redundant copy)
     memmove(mem, (char*)P2V(pa), PGSIZE);// copy the pages to new address
     // if(mappages(p->pgdir,(void *)vpage , PGSIZE, pa, flags) < 0) {
     //   // kfree(mem);

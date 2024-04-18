@@ -88,7 +88,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-
+p->rss = 0;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -96,6 +96,7 @@ found:
     p->state = UNUSED;
     return 0;
   }
+  p->rss += PGSIZE; 
   sp = p->kstack + KSTACKSIZE;
 
   // Leave room for trap frame.
@@ -166,7 +167,7 @@ growproc(int n)
     if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
   } else if(n < 0){
-    if((sz = deallocuvm(curproc->pgdir, sz, sz + n)) == 0)
+    if((sz = deallocuvm(curproc->pgdir, sz, sz + n,1)) == 0)
       return -1;
   }
   curproc->sz = sz;
@@ -289,7 +290,7 @@ wait(void)
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
-        freevm(p->pgdir);
+        freevm(p->pgdir,0);
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
