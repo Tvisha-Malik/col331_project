@@ -25,11 +25,12 @@ fmtname(char *path)
 void
 ls(char *path)
 {
+   printf(2,"inside ls\n");
   char buf[512], *p;
   int fd;
   struct dirent de;
   struct stat st;
-
+ 
   if((fd = open(path, 0)) < 0){
     printf(2, "ls: cannot open %s\n", path);
     return;

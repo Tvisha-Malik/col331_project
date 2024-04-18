@@ -136,8 +136,15 @@ getcmd(char *buf, int nbuf)
   printf(2, "$ ");
   memset(buf, 0, nbuf);
   gets(buf, nbuf);
+  printf(2,"here in cmd\n");
+  buf[0];
+printf(2,"here in cmd later\n");
+printf(2,"the input is %s \n", buf);
+//  printf(2, " before entered here \n");
   if(buf[0] == 0) // EOF
-    return -1;
+   { printf(2, "entered here \n"); 
+    return -1;}
+   printf(2, " after entered here \n");
   return 0;
 }
 
@@ -159,13 +166,18 @@ main(void)
   while(getcmd(buf, sizeof(buf)) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
       // Chdir must be called by the parent, not the child.
+     
       buf[strlen(buf)-1] = 0;  // chop \n
       if(chdir(buf+3) < 0)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
+     printf(2, "after first if\n"); 
     if(fork1() == 0)
-      runcmd(parsecmd(buf));
+     {
+      printf(2, "fork1 successful\n"); 
+      runcmd(parsecmd(buf));}
+      // printf(2, "fork1 unsuccessful\n"); 
     wait();
   }
   exit();

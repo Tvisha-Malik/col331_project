@@ -57,7 +57,8 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
     case T_PGFLT:
-   swap_or_cow();
+    cprintf("here in trap\n");
+    swap_or_cow();
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE:

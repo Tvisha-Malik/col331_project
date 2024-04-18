@@ -32,13 +32,14 @@ seginit(void)
 // Return the address of the PTE in page table pgdir
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page table pages.
-static pte_t *
+pte_t *
 walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
   pde_t *pde;
   pte_t *pgtab;
 
   pde = &pgdir[PDX(va)];
+   cprintf("start of walk dir\n");
   if(*pde & PTE_P){
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
   } else {
@@ -51,6 +52,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
     // entries, if necessary.
     *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
   }
+  // cprintf("end of walk dir\n");
   return &pgtab[PTX(va)];
 }
 
@@ -323,7 +325,7 @@ copyuvm(pde_t *pgdir, uint sz)
   pde_t *d;
   pte_t *pte;
   uint pa, i, flags;
-  char *mem;
+  // char *mem;
 
   if((d = setupkvm()) == 0)// this is necessary as page tables and page directories are allocated (they are not shared)
     return 0;

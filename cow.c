@@ -16,14 +16,18 @@ void swap_or_cow(void)
       char *mem;
     struct proc *p = myproc();
     uint vpage = rcr2();
+    cprintf("the page requested is %d \n",vpage);
+     cprintf("before walk dir\n");
     pte_t *pgdir_adr = walkpgdir(p->pgdir, (void *)vpage, 0);
     if (!pgdir_adr)
     {
         panic("Invalid page fault zero");
         return;
     }
-    if ((*pgdir_adr & !PTE_P))// page swappedout (swap it in)
+   
+    if (!(*pgdir_adr & PTE_P))// page swappedout (swap it in)
     {
+      cprintf("in not present\n");
     //    uint block_id = (*pgdir_adr >> PTXSHIFT);
     // char *phy_page = kalloc();
     // if (phy_page == 0)
@@ -37,11 +41,15 @@ void swap_or_cow(void)
     // *pgdir_adr = *pgdir_adr & (~PTE_SO);
     // swapfree(ROOTDEV, block_id);
     }
-    if (*pgdir_adr & !PTE_W)// shared page
+    //  cprintf("here 2\n");
+    //  cprintf("the page is %d \n", *pgdir_adr);
+    if (!(*pgdir_adr & PTE_W))// shared page
     {
+       cprintf("here 2 inside\n");
          pa = PTE_ADDR(*pgdir_adr);
          flags = PTE_FLAGS(*pgdir_adr);
          flags=flags | (PTE_W);// set the writeable flag
+         
           if((mem = kalloc()) == 0) // not allocating a new page instead coping the page table enteries
       {
         panic("can kalloc in swap_or_cow\n");
@@ -53,7 +61,7 @@ void swap_or_cow(void)
     //   goto bad;
     //(mappages(d, (void *)i, PGSIZE, V2P(mem), flags)// page , virtual address, pg size, physical address, flags
     *pgdir_adr=V2P(mem)|flags|PTE_P;// update the page table entry
-
+    cprintf("end of cow \n");
 
     }
 }
