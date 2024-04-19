@@ -59,7 +59,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 // Create PTEs for virtual addresses starting at va that refer to
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
-static int
+int
 mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 {
   char *a, *last;
@@ -70,8 +70,8 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
   for(;;){
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
       return -1;
-    if(*pte & PTE_P)
-      panic("remap");
+    // if(*pte & PTE_P)
+    //   panic("remap");
     *pte = pa | perm | PTE_P;
     if(a == last)
       break;
@@ -324,8 +324,9 @@ copyuvm(pde_t *pgdir, uint sz)
 {
   pde_t *d;
   pte_t *pte;
-  uint pa, i, flags;
-  // char *mem;
+  uint pa, i;
+  uint flags;
+  char *mem;
 
   if((d = setupkvm()) == 0)// this is necessary as page tables and page directories are allocated (they are not shared)
     return 0;
@@ -334,8 +335,10 @@ copyuvm(pde_t *pgdir, uint sz)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
       panic("copyuvm: page not present");
-    pa = PTE_ADDR(*pte);
+    
+    
     *pte=*pte&(~PTE_W);// unset the writeable permissions
+    pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);// neeed to set both as unwriteable and shared
   
     
@@ -343,7 +346,8 @@ copyuvm(pde_t *pgdir, uint sz)
     //   goto bad;
     // memmove(mem, (char*)P2V(pa), PGSIZE);
     // no need to update rss here as no new pages are allocated
-    if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0) {
+// if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0) {
+    if(mappages(d, (void*)i, PGSIZE, pa, PTE_P|PTE_U) < 0) {
       // kfree(mem);
       goto bad;
     }

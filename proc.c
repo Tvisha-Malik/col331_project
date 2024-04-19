@@ -291,11 +291,13 @@ wait(void)
         kfree(p->kstack);
         p->kstack = 0;
         freevm(p->pgdir,0);
+        cprintf("process %d is clean now \n",p->pid);
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+        
         release(&ptable.lock);
         return pid;
       }

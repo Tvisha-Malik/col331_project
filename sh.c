@@ -127,7 +127,7 @@ runcmd(struct cmd *cmd)
       runcmd(bcmd->cmd);
     break;
   }
-    printf(2, "end of runcmd %d \n",cmd->type);
+    // printf(2, "end of runcmd %d \n",cmd->type);
   exit();
 }
 
@@ -137,15 +137,16 @@ getcmd(char *buf, int nbuf)
   printf(2, "$ ");
   memset(buf, 0, nbuf);
   gets(buf, nbuf);
-  printf(2,"here in cmd\n");
+  // printf(2,"here in cmd\n");
   buf[0];
-printf(2,"here in cmd later\n");
+// printf(2,"here in cmd later\n");
 printf(2,"the input is %s \n", buf);
 //  printf(2, " before entered here \n");
   if(buf[0] == 0) // EOF
-   { printf(2, "entered here \n"); 
+   { 
+    // printf(2, "entered here \n"); 
     return -1;}
-   printf(2, " after entered here \n");
+  //  printf(2, " after entered here \n");
   return 0;
 }
 
@@ -173,7 +174,7 @@ main(void)
         printf(2, "cannot cd %s\n", buf+3);
       continue;
     }
-     printf(2, "after first if\n"); 
+    //  printf(2, "after first if\n"); 
     if(fork1() == 0)
      {
       // printf(2, "fork1 successful\n"); 
@@ -182,7 +183,7 @@ main(void)
     wait();
     // printf(2, "sh woke up\n"); 
   }
-  printf(2, "sh exiting\n"); 
+  // printf(2, "sh exiting\n"); 
   exit();
 }
 
@@ -201,6 +202,7 @@ fork1(void)
   pid = fork();
   if(pid == -1)
     panic("fork");
+  
   return pid;
 }
 
