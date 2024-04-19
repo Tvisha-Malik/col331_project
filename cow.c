@@ -12,10 +12,6 @@ void swap_or_cow(void)
     char *mem;
     struct proc *p = myproc();
     uint vpage = rcr2();
-    cprintf("the page requested is %x \n", vpage);
-    cprintf("the process is %s \n", p->name);
-    cprintf("the eip is %x \n", p->tf->eip);
-    cprintf("the size of the process is %x\n",p->sz);
     pte_t *pgdir_adr = walkpgdir(p->pgdir, (void *)vpage, 0);
     if (!pgdir_adr)
     {
@@ -28,29 +24,26 @@ void swap_or_cow(void)
     }
     if ((*pgdir_adr & PTE_W) == 0)
     {
-        cprintf("is not writeable\n");
-        
-
         pa = PTE_ADDR(*pgdir_adr);
-        cprintf("the old page table pa is %x\n", pa);
-
         flags = PTE_FLAGS(*pgdir_adr);
+        
+         if(check_rmap(P2V(pa))==1)
+         {
+            *pgdir_adr=*pgdir_adr|PTE_W;
+            return;
+         }
         if ((mem = kalloc()) == 0) // not allocating a new page instead coping the page table enteries
         {
             panic("cant kalloc in page_fault\n");
         }
         p->rss += PGSIZE;                      // as new pages is allocated (take care of redundant copy)
         memmove(mem, (char *)P2V(pa), PGSIZE); // copy the pages to new address
-        *pgdir_adr = V2P(mem) |flags|PTE_W| PTE_P; // update the page table entry
-    //     if(mappages(p->pgdir, (void*)vpage, PGSIZE, V2P(mem), flags|PTE_W) < 0) {
-    //   // kfree(mem);
-    //   panic("cant mappages");
-    // }
-          cprintf("the new page table pa is %x\n", PTE_ADDR(*pgdir_adr));
+        dec_rmap(P2V(pa));
+        *pgdir_adr = V2P(mem) |PTE_W|flags; // update the page table entry
+        // lcr3(V2P(p->pgdir));
     }
     if((*pgdir_adr & PTE_U) == 0)
     {
-          cprintf("is not user accessible\n");
           panic("is not user accessible \n");
 
     }

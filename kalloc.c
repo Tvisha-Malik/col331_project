@@ -8,7 +8,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "spinlock.h"
-
+int rmap[(PHYSTOP-EXTMEM)/PGSIZE];// for virtual address, subtract kernbase+extmem and divide by pagesize
 void freerange(void *vstart, void *vend);
 extern char end[]; // first address after kernel loaded from ELF file
                    // defined by the kernel linker script in kernel.ld
@@ -29,6 +29,37 @@ struct {
 // the pages mapped by entrypgdir on free list.
 // 2. main() calls kinit2() with the rest of the physical pages
 // after installing a full page table that maps them on all cores.
+void init_rmap(char* v)
+{
+  if(V2P(v)<EXTMEM)
+  panic("init rmap\n");
+  uint x=(V2P(v)-EXTMEM)/PGSIZE;
+  rmap[x]=1;
+}
+int check_rmap(char* v)
+{
+  if(V2P(v)<EXTMEM)
+  panic("check rmap\n");
+  uint x=(V2P(v)-EXTMEM)/PGSIZE;
+  return rmap[x];
+}
+void inc_rmap(char* v)
+{
+  if(V2P(v)<EXTMEM)
+  panic("inc rmap\n");
+  uint x=(V2P(v)-EXTMEM)/PGSIZE;
+  rmap[x]++;
+}
+void dec_rmap(char* v)
+{
+  if(V2P(v)<EXTMEM)
+  panic("dec rmap\n");
+  uint x=(V2P(v)-EXTMEM)/PGSIZE;
+  rmap[x]--;
+  // if(rmap[x]<0)
+  // panic("dec rmap negative\n");
+}
+
 void
 kinit1(void *vstart, void *vend)
 {
@@ -52,7 +83,7 @@ freerange(void *vstart, void *vend)
   for(; p + PGSIZE <= (char*)vend; p += PGSIZE)
   {
     kfree(p);
-    kmem.num_free_pages+=1;
+    // kmem.num_free_pages+=1;
   }
     
 }
@@ -68,9 +99,13 @@ kfree(char *v)
 
   if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
     panic("kfree");
-
+  dec_rmap(v);
+  if(check_rmap(v)>0)
+    return;
+  // if(check_rmap(v)!=0)
+  // return;
   // Fill with junk to catch dangling refs.
-  memset(v, 1, PGSIZE);
+  memset(v, 1, PGSIZE);// virtual address of the physical page
 
   if(kmem.use_lock)
     acquire(&kmem.lock);
@@ -101,6 +136,7 @@ kalloc(void)
     
   if(kmem.use_lock)
     release(&kmem.lock);
+  init_rmap((char*)r);
   return (char*)r;
 }
 uint 

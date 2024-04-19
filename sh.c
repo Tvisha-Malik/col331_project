@@ -138,7 +138,7 @@ getcmd(char *buf, int nbuf)
   memset(buf, 0, nbuf);
   gets(buf, nbuf);
   // printf(2,"here in cmd\n");
-  buf[0];
+
 // printf(2,"here in cmd later\n");
 printf(2,"the input is %s \n", buf);
 //  printf(2, " before entered here \n");

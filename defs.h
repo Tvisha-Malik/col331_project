@@ -70,6 +70,9 @@ uint            num_of_FreePages(void);
 void            kfree(char*);
 void            kinit1(void*, void*);
 void            kinit2(void*, void*);
+void inc_rmap(char*);
+void dec_rmap(char*);
+int check_rmap(char*);
 
 // kbd.c
 void            kbdintr(void);
