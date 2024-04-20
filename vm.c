@@ -107,7 +107,7 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
 // }
 
 void
-uvmunmap(pde_t* pagetable, void* va, uint64 size, int do_free)
+uvmunmap(pde_t* pgdir, void* va, uint64 size, int do_free)
 {
   uint a, last;
   pte_t *pte;
@@ -116,7 +116,7 @@ uvmunmap(pde_t* pagetable, void* va, uint64 size, int do_free)
   a = PGROUNDDOWN((uint)va);
   last = PGROUNDDOWN(((uint)va) + size - 1);
   for(;;){
-    if((pte = walkpgdir(pagetable, &a, 0)) == 0)
+    if((pte = walkpgdir(pgdir, &a, 0)) == 0)
       panic("uvmunmap: walk");
     if((*pte & PTE_P) == 0){
       // printf("va=%p pte=%p\n", a, *pte);
@@ -422,7 +422,7 @@ copyuvm(pde_t *pgdir, uint sz)
       goto bad;
     }
 
-	uvmunmap(d, (void*)i, 1, 0);
+	uvmunmap(pgdir, (void*)i, 1, 0);
 
     if(mappages(pgdir, (void*)i, PGSIZE, pa, flags) < 0) {
       // kfree(mem);

@@ -14,7 +14,6 @@ kernel
 kernelmemfs
 mkfs
 .gdbinit
-.vscode
 
 compile_commands.json
 .cache

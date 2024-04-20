@@ -1,0 +1,52 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+            "label": "build",
+            "type": "shell",
+			"command": "",
+            "group": {
+                "kind": "build",
+                "isDefault": true,
+				"problemMatcher": "$gcc",
+            },
+			"dependsOn": ["build xv6", "build fs", "build gdbinit"],
+        },
+		{
+            "label": "build xv6",
+            "type": "shell",
+            "command": "make xv6.img",
+            "group": {
+                "kind": "build",
+                "isDefault": true,
+				"problemMatcher": "$gcc",
+            }
+        },
+		{
+            "label": "build fs",
+            "type": "shell",
+            "command": "make fs.img",
+            "group": {
+                "kind": "build",
+                "isDefault": true,
+				"problemMatcher": "$gcc",
+            }
+        },
+		{
+            "label": "build gdbinit",
+            "type": "shell",
+            "command": "sed \"s/localhost:1234/localhost:26000/\" < gdbinit.tmpl > .gdbinit",
+            "group": {
+                "kind": "build",
+                "isDefault": true,
+            }
+        },
+        {
+            "label": "continueInGDB",
+            "type": "shell",
+            "command": "gdb",
+            "args": ["-ex", "continue"],
+            "group": "build"
+        },
+	]
+}
