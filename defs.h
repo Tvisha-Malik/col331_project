@@ -79,7 +79,7 @@ int             check_rmap(char*, int);
 int             count_rmap(char*);
 void            update_rmap_swap_out(uint, uint, struct swap_slot *);
 void            update_rmap_swap_in(uint, struct swap_slot*);
-
+void            lock_for_rmap();
 // kbd.c
 void            kbdintr(void);
 
