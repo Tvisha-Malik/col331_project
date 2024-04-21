@@ -96,7 +96,7 @@ void swap_out_page(pte_t *vp, uint blockno, int dev)
     }
     *vp = ((blockno << 12) | PTE_FLAGS(*vp) | PTE_SO);
     *vp = *vp & (~PTE_P); // setting the top 20 bits as the block number, setting the present bit as unset and the swapped out bit as set
-    kfree(P2V(physicalAddress));
+    kfree(P2V(physicalAddress), -1, 0);
 
 }
 void disk_read(uint dev, char *page, int block)
@@ -142,7 +142,7 @@ void swap_in_page()
     }
     p->rss += PGSIZE;
     disk_read(ROOTDEV, phy_page, (int)block_id);
-    *pgdir_adr = V2P(phy_page) | PTE_FLAGS(*pgdir_adr) | PTE_P;
-    *pgdir_adr = *pgdir_adr & (~PTE_SO);
+    *pgdir_adr = V2P(phy_page) | PTE_FLAGS(*pgdir_adr) | PTE_P; // setting the present bit as set
+    *pgdir_adr = *pgdir_adr & (~PTE_SO); // setting the swapped out bit as unset
     swapfree(ROOTDEV, block_id);
 }

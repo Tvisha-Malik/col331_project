@@ -7,6 +7,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "spinlock.h"
+#include "proc.h"
 struct rmap_list 
 {
   int pid;
@@ -34,10 +35,12 @@ struct {
 // the pages mapped by entrypgdir on free list.
 // 2. main() calls kinit2() with the rest of the physical pages
 // after installing a full page table that maps them on all cores.
-void init_rmap(char* v,int pid)
+
+// For virtual addr v, process pid, it sets rmap of page of v as available for all processes except pid
+void init_rmap(char* v, int pid)
 {
   if(V2P(v)<EXTMEM)
-  panic("init rmap\n");
+    panic("init rmap\n");
   uint x=(V2P(v)-EXTMEM)/PGSIZE;
   for(int i=0; i<NPROC;i++)
   {
@@ -47,10 +50,13 @@ void init_rmap(char* v,int pid)
   rmap[x][0].pid=pid;
 
 }
+
+// Checks if the page is set as unavailable for the process pid
+// to determine whether the process has a page mapped to it.
 int check_rmap(char* v, int pid)// 1 if present 0 otherwise
-  {
+{
   if(V2P(v)<EXTMEM)
-    panic("dec rmap\n");
+    panic("check rmap\n");
   uint x=(V2P(v)-EXTMEM)/PGSIZE;
   for(int i=0; i<NPROC;i++)
   {
@@ -61,10 +67,12 @@ int check_rmap(char* v, int pid)// 1 if present 0 otherwise
   return 0;
   // panic("rmap dec not found \n");
 }
+
+// Count the number of processes using the page
 int count_rmap(char* v)
 {
   if(V2P(v)<EXTMEM)
-  panic("check rmap\n");
+    panic("count_rmap\n");
   uint x=(V2P(v)-EXTMEM)/PGSIZE;
   int ans=0;
   for(int i=0; i<NPROC; i++)
@@ -74,37 +82,40 @@ int count_rmap(char* v)
   }
   return ans;
 }
+
+// Add process pid to the rmap of the page
 void inc_rmap(char* v, int pid)
 {
   if(V2P(v)<EXTMEM)
-  panic("inc rmap\n");
+    panic("inc rmap\n");
   uint x=(V2P(v)-EXTMEM)/PGSIZE;
-for(int i=0; i<NPROC;i++)
+  for(int i=0; i<NPROC;i++)
   {
     if(rmap[x][i].available==1)// if available
-    {rmap[x][i].available=0;
-    rmap[x][i].pid=pid;
-    return;
+    {
+      rmap[x][i].available=0;
+      rmap[x][i].pid=pid;
+      return;
     }
   }
-   panic("not free rmap slot");
-
-
+  panic("not free rmap slot");
 }
+
+// Remove process pid from the rmap of the page
 void dec_rmap(char* v, int pid)
 {
   if(V2P(v)<EXTMEM)
-  panic("dec rmap\n");
+    panic("dec rmap\n");
   uint x=(V2P(v)-EXTMEM)/PGSIZE;
   for(int i=0; i<NPROC;i++)
   {
     if((rmap[x][i].available==0) && (rmap[x][i].pid==pid))
-    {rmap[x][i].available=1;
-    return;
+    {
+      rmap[x][i].available=1;
+      return;
     }
   }
   panic("rmap dec not found \n");
- 
 }
 
 void
@@ -139,6 +150,7 @@ freerange(void *vstart, void *vend)
 // which normally should have been returned by a
 // call to kalloc().  (The exception is when
 // initializing the allocator; see kinit above.)
+// @param set: whether the rmap is already set.
 void
 kfree(char *v, int pid, int set)
 {
@@ -147,11 +159,13 @@ kfree(char *v, int pid, int set)
   if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
     panic("kfree");
   if(set)
-  { if(check_rmap(v, pid)==0)
-        panic("no page mapped to it\n");
+  {
+    if(check_rmap(v, pid)==0)
+      panic("no page mapped to it\n");
     dec_rmap(v,pid);
-  if(count_rmap(v)!=0)// if other processes
-    return;}
+    if(count_rmap(v)!=0)// if other processes
+      return;
+  }
   // if(check_rmap(v)!=0)
   // return;
   // Fill with junk to catch dangling refs.
@@ -170,6 +184,7 @@ kfree(char *v, int pid, int set)
 // Allocate one 4096-byte page of physical memory.
 // Returns a pointer that the kernel can use.
 // Returns 0 if the memory cannot be allocated.
+// @param set: whether the rmap is already set.
 char*
 kalloc(int pid, int set)
 {
@@ -187,7 +202,7 @@ kalloc(int pid, int set)
   if(kmem.use_lock)
     release(&kmem.lock);
   if(set)// if not set then dont initialise it
-  init_rmap((char*)r, pid);
+    init_rmap((char*)r, pid);
   return (char*)r;
 }
 uint 

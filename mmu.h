@@ -93,8 +93,9 @@ struct segdesc {
 // Page table/directory entry flags.
 #define PTE_P           0x001   // Present
 #define PTE_W           0x002   // Writeable
-#define PTE_SO          0x008  
 #define PTE_U           0x004   // User
+#define PTE_SO          0x008   // Swapped out
+#define PTE_A           0x020   // Accessed
 #define PTE_PS          0x080   // Page Size
 
 // Address in page table or page directory entry
@@ -157,7 +158,12 @@ struct gatedesc {
   uint p : 1;           // Present
   uint off_31_16 : 16;  // high bits of offset in segment
 };
-
+struct victim_page
+{
+  int available;
+  pte_t *pt_entry;
+  char *va_start;
+};
 // Set up a normal interrupt/trap gate descriptor.
 // - istrap: 1 for a trap (= exception) gate, 0 for an interrupt gate.
 //   interrupt gate clears FL_IF, trap gate leaves FL_IF alone

@@ -9,6 +9,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct victim_page;
 
 // bio.c
 void            binit(void);
@@ -96,6 +97,7 @@ void            end_op();
 // mp.c
 extern int      ismp;
 void            mpinit(void);
+
 // pageswap.c
 
 void swaparrayinit(int);
@@ -104,7 +106,6 @@ void swapfree(int, int);
 void swap_out(void);
 void swap_out_page(pte_t *, uint, int);
 void swap_in_page();
-
 
 // picirq.c
 void            picenable(int);
@@ -135,7 +136,8 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-void            print_rss(void);
+void             print_rss(void);
+struct proc*    victim_proc(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -201,9 +203,10 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
-pte_t *          walkpgdir(pde_t *pgdir, const void *va, int alloc);
-int
-mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
+pte_t*          find_victim_page(pde_t *, uint);
+void            unacc_proc(pde_t *);
+pte_t*          walkpgdir(pde_t *, const void *, int);
+int             mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

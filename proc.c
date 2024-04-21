@@ -197,6 +197,9 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+  // assuming all the pages of this process will be in memory
+  // this includes the page directory (already considered)
+  // the page tables corresponding to the pages
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
@@ -549,3 +552,34 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+// returns the victim proc
+struct proc *victim_proc()
+{
+  struct proc *p = 0;
+  struct proc *vict = ptable.proc;
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->state == UNUSED) // only runnable and running processes can be choosen as victim
+      continue;
+    if ((vict->state==UNUSED)||(p->rss > vict->rss) || ((p->rss == vict->rss) && (p->pid < vict->pid)))
+    {
+      vict = p;
+    }
+  }
+  //    cprintf("no victim proc found in vict proc \n");
+  if (vict->state==UNUSED)
+    panic("no victim process found");
+  return vict;
+}
+
+// void unaccessed(void)
+// {
+//   struct proc *p = 0;
+//   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+//   {
+//     if (p->state == UNUSED)
+//       continue;
+//     unacc_proc(p->pgdir);
+//   }
+// }

@@ -277,11 +277,19 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz, int rss_update, int pid)
         panic("kfree");
       char *v = P2V(pa);
       if(pid>0)
-      kfree(v, pid,1);
-      else kfree(v,-1,0);
+        kfree(v,pid,1);
+      else 
+        kfree(v,-1,0);
       *pte = 0;
       if(rss_update)
       curproc->rss-=PGSIZE;
+    }
+    // !CHECK - moved from lab 4
+    else if (((*pte & PTE_P) == 0) && ((*pte & PTE_SO)!=0))
+    {
+       uint block_id = (*pte >> PTXSHIFT);
+       *pte=*pte&(~PTE_SO);
+       swapfree(ROOTDEV, block_id);
     }
   }
   return newsz;
@@ -330,7 +338,7 @@ copyuvm(pde_t *pgdir, uint sz, int new_pid)
   uint flags;
 
   if((d = setupkvm()) == 0)// this is necessary as page tables and page directories are allocated (they are not shared)
-      return 0;
+    return 0;
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
@@ -341,7 +349,7 @@ copyuvm(pde_t *pgdir, uint sz, int new_pid)
     *pte=*pte&(~PTE_W);// unset the writeable permissions
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);// neeed to set both as unwriteable and shared
-    inc_rmap(P2V(pa), new_pid);// inc the rmap of the page
+    inc_rmap(P2V(pa), new_pid);// increment the rmap of the page
     if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0) {
       // kfree(mem);
       
@@ -349,7 +357,7 @@ copyuvm(pde_t *pgdir, uint sz, int new_pid)
     }
 
   }
-   lcr3(V2P(pgdir));
+  lcr3(V2P(pgdir)) ;
   return d;
 
 bad:
@@ -398,10 +406,81 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   return 0;
 }
 
-//PAGEBREAK!
-// Blank page.
-//PAGEBREAK!
-// Blank page.
-//PAGEBREAK!
-// Blank page.
+// given a pgdir, find a page with pte_p set and pte_a unset
+// might have to change the return type
+pte_t *find_victim_page(pde_t *pgdir, uint sz)
+{
+  pte_t *pgtab;
+  pde_t *pde;
+  pte_t *victim;
+  for (uint i = 0; i < sz; i += PGSIZE)
+  {
+    pde = &pgdir[PDX(i)];
+    if (*pde & PTE_P)
+    {
+      pgtab = (pte_t *)P2V(PTE_ADDR(*pde));
+      victim = &pgtab[PTX(i)];
+      if ((*victim & PTE_P) && !(*victim & PTE_A) && (*victim & PTE_U))
+      {
+        return victim;
+      }
+    }
+  }
+  // *va_start=-1;
+  // return 0;// no unaccesed pages
+  return 0;
+  //  pte_t *pte;
+  // for(long i=4096; i<KERNBASE;i+=PGSIZE){    //for all pages in the user virtual space
+  // //  cprintf("i wala loop\t");
+  //   if((pte=walkpgdir(pgdir,(char*)i,0))!= 0) //if mapping exists (0 as 3rd argument as we dont want to create mapping if does not exists)
+  // 	  {    // cprintf("walkpgdir successful\t");
 
+  //          if(*pte & PTE_P) //if not dirty, or (present and access bit not set)  --- conditions needs to be checked
+  //          {   if(*pte & ~PTE_A)             //access bit is NOT set.
+  //              {
+  //                 // cprintf("409600\n");
+  //               //*pte = *pte | PTE_A;
+  //                // cprintf("returning victim\n");
+  //                return pte;
+  //              }
+  //          }
+  //     }
+  // }
+  // return 0;
+}
+
+void unacc_proc(pde_t *pgdir)
+{
+  pte_t *pgtab;
+  pde_t *pde;
+  pte_t *victim;
+  int counter = 0;
+  for (int i = 0; i < 1024; i++) // go to the page directory entry ie the page table
+  {
+    pde = &pgdir[i];
+    if (*pde & PTE_P) // if the directory entry is present,
+    {
+      pgtab = (pte_t *)P2V(PTE_ADDR(*pde)); // go to the page table
+      for (int j = 0; j < 1024; j++)
+      {
+        victim = &pgtab[j]; // iterate through the entries in the page table
+        if ((*victim & PTE_P) && (*victim & PTE_A)) // if its present and acessed bit is set,
+        {
+          counter++; // increase counter
+          if (counter == 10) // unset 10 percent of the pages, that is every 10th page
+          {
+            counter = 0;
+            *victim = *victim & (~PTE_A);
+          }
+        }
+      }
+    }
+  }
+}
+
+// PAGEBREAK!
+//  Blank page.
+// PAGEBREAK!
+//  Blank page.
+// PAGEBREAK!
+//  Blank page.
