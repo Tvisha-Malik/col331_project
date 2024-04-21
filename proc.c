@@ -92,7 +92,7 @@ p->rss = 0;
   release(&ptable.lock);
 
   // Allocate kernel stack.
-  if((p->kstack = kalloc()) == 0){
+  if((p->kstack = kalloc(-1,0)) == 0){
     p->state = UNUSED;
     return 0;
   }
@@ -129,7 +129,7 @@ userinit(void)
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
-  inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size);
+  inituvm(p->pgdir, _binary_initcode_start, (int)_binary_initcode_size, p->pid);
   p->sz = PGSIZE;
   memset(p->tf, 0, sizeof(*p->tf));
   p->tf->cs = (SEG_UCODE << 3) | DPL_USER;
@@ -167,7 +167,7 @@ growproc(int n)
     if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
   } else if(n < 0){
-    if((sz = deallocuvm(curproc->pgdir, sz, sz + n,1)) == 0)
+    if((sz = deallocuvm(curproc->pgdir, sz, sz + n,1, curproc->pid)) == 0)
       return -1;
   }
   curproc->sz = sz;
@@ -191,8 +191,8 @@ fork(void)
   }
 
   // Copy process state from proc.
-  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
-    kfree(np->kstack);
+  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz, np->pid)) == 0){
+    kfree(np->kstack, -1,0);
     np->kstack = 0;
     np->state = UNUSED;
     return -1;
@@ -288,9 +288,9 @@ wait(void)
       if(p->state == ZOMBIE){
         // Found one.
         pid = p->pid;
-        kfree(p->kstack);
+        kfree(p->kstack,-1,0);
         p->kstack = 0;
-        freevm(p->pgdir,0);
+        freevm(p->pgdir,0, pid);
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;

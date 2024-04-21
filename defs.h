@@ -65,14 +65,15 @@ extern uchar    ioapicid;
 void            ioapicinit(void);
 
 // kalloc.c
-char*           kalloc(void);
+char*           kalloc(int ,int);
 uint            num_of_FreePages(void);
-void            kfree(char*);
+void            kfree(char*, int ,int);
 void            kinit1(void*, void*);
 void            kinit2(void*, void*);
-void inc_rmap(char*);
-void dec_rmap(char*);
-int check_rmap(char*);
+void inc_rmap(char*, int);
+void dec_rmap(char*, int);
+int check_rmap(char*, int);
+int count_rmap(char*);
 
 // kbd.c
 void            kbdintr(void);
@@ -191,11 +192,11 @@ void            kvmalloc(void);
 pde_t*          setupkvm(void);
 char*           uva2ka(pde_t*, char*);
 int             allocuvm(pde_t*, uint, uint);
-int             deallocuvm(pde_t*, uint, uint,int);
-void            freevm(pde_t*,int);
-void            inituvm(pde_t*, char*, uint);
+int             deallocuvm(pde_t*, uint, uint,int, int);
+void            freevm(pde_t*,int, int);
+void            inituvm(pde_t*, char*, uint, int);
 int             loaduvm(pde_t*, char*, struct inode*, uint, uint);
-pde_t*          copyuvm(pde_t*, uint);
+pde_t*          copyuvm(pde_t*, uint, int);
 void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);

@@ -134,7 +134,7 @@ void swap_in_page()
         return;
     }
     uint block_id = (*pgdir_adr >> PTXSHIFT);
-    char *phy_page = kalloc();
+    char *phy_page = kalloc(p->pid,1);
     if (phy_page == 0)
     {
         panic("Failed to allocate memory for swapped in page");

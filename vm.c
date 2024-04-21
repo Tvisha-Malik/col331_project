@@ -43,7 +43,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
   if(*pde & PTE_P){
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
   } else {
-    if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
+    if(!alloc || (pgtab = (pte_t*)kalloc(-1,0)) == 0)
       return 0;
     // Make sure all those PTE_P bits are zero.
     memset(pgtab, 0, PGSIZE);
@@ -123,7 +123,7 @@ setupkvm(void)
   pde_t *pgdir;
   struct kmap *k;
 
-  if((pgdir = (pde_t*)kalloc()) == 0)
+  if((pgdir = (pde_t*)kalloc(-1,0)) == 0)
     return 0;
   memset(pgdir, 0, PGSIZE);
   if (P2V(PHYSTOP) > (void*)DEVSPACE)
@@ -131,7 +131,7 @@ setupkvm(void)
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
     if(mappages(pgdir, k->virt, k->phys_end - k->phys_start,
                 (uint)k->phys_start, k->perm) < 0) {
-      freevm(pgdir,1);
+      freevm(pgdir,1,-1);// if -1 ignore
       return 0;
     }
   return pgdir;
@@ -182,13 +182,13 @@ switchuvm(struct proc *p)
 // Load the initcode into address 0 of pgdir.
 // sz must be less than a page.
 void
-inituvm(pde_t *pgdir, char *init, uint sz)
+inituvm(pde_t *pgdir, char *init, uint sz, int pid)
 {
   char *mem;
 
   if(sz >= PGSIZE)
     panic("inituvm: more than a page");
-  mem = kalloc();
+  mem = kalloc(pid,1);
   memset(mem, 0, PGSIZE);
   mappages(pgdir, 0, PGSIZE, V2P(mem), PTE_W|PTE_U);
   memmove(mem, init, sz);
@@ -234,18 +234,18 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 
   a = PGROUNDUP(oldsz);
   for(; a < newsz; a += PGSIZE){
-    mem = kalloc();
+    mem = kalloc(curproc->pid,1);
     if(mem == 0){
       cprintf("allocuvm out of memory\n");
-      deallocuvm(pgdir, newsz, oldsz,1);
+      deallocuvm(pgdir, newsz, oldsz,1, -1);
       return 0;
     }
     memset(mem, 0, PGSIZE);
     curproc->rss+=PGSIZE;
     if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
       cprintf("allocuvm out of memory (2)\n");
-      deallocuvm(pgdir, newsz, oldsz,1);
-      kfree(mem);
+      deallocuvm(pgdir, newsz, oldsz,1, -1);
+      kfree(mem,curproc->pid,1);
       return 0;
     }
   }
@@ -257,7 +257,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz)
 // need to be less than oldsz.  oldsz can be larger than the actual
 // process size.  Returns the new process size.
 int
-deallocuvm(pde_t *pgdir, uint oldsz, uint newsz, int rss_update)
+deallocuvm(pde_t *pgdir, uint oldsz, uint newsz, int rss_update, int pid)
 {
   pte_t *pte;
   uint a, pa;
@@ -276,7 +276,9 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz, int rss_update)
       if(pa == 0)
         panic("kfree");
       char *v = P2V(pa);
-      kfree(v);
+      if(pid>0)
+      kfree(v, pid,1);
+      else kfree(v,-1,0);
       *pte = 0;
       if(rss_update)
       curproc->rss-=PGSIZE;
@@ -288,20 +290,20 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz, int rss_update)
 // Free a page table and all the physical memory pages
 // in the user part.
 void
-freevm(pde_t *pgdir, int update_rss)
+freevm(pde_t *pgdir, int update_rss, int pid)
 {
   uint i;
 
   if(pgdir == 0)
     panic("freevm: no pgdir");
-  deallocuvm(pgdir, KERNBASE, 0,update_rss);
+  deallocuvm(pgdir, KERNBASE, 0,update_rss, pid);
   for(i = 0; i < NPDENTRIES; i++){
     if(pgdir[i] & PTE_P){
       char * v = P2V(PTE_ADDR(pgdir[i]));
-      kfree(v);
+      kfree(v, -1, 0);// no need to update here as they are page tables
     }
   }
-  kfree((char*)pgdir);
+  kfree((char*)pgdir, -1,0);
 }
 
 // Clear PTE_U on a page. Used to create an inaccessible
@@ -320,7 +322,7 @@ clearpteu(pde_t *pgdir, char *uva)
 // Given a parent process's page table, create a copy
 // of it for a child.
 pde_t*
-copyuvm(pde_t *pgdir, uint sz)
+copyuvm(pde_t *pgdir, uint sz, int new_pid)
 {
   pde_t *d;
   pte_t *pte;
@@ -339,7 +341,7 @@ copyuvm(pde_t *pgdir, uint sz)
     *pte=*pte&(~PTE_W);// unset the writeable permissions
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);// neeed to set both as unwriteable and shared
-    inc_rmap(P2V(pa));// inc the rmap of the page
+    inc_rmap(P2V(pa), new_pid);// inc the rmap of the page
     if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0) {
       // kfree(mem);
       
@@ -351,7 +353,7 @@ copyuvm(pde_t *pgdir, uint sz)
   return d;
 
 bad:
-  freevm(d,1);
+  freevm(d,1, -1);
   return 0;
 }
 
