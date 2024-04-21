@@ -552,7 +552,20 @@ procdump(void)
     cprintf("\n");
   }
 }
-
+void swappout_pids(uint physicalAddress){
+  for(int i=0;i<NPROC;i++){ // Iterating through rmap slots
+    struct rmap_list page_pids = rmap[physicalAddress/PGSIZE][i];
+    for(struct proc p=ptable.proc;p<&ptable.proc[NPROC];p++){ // Iterating through all the processes to find pid match
+      p->rss -= PGSIZE; // as its page is swapped out
+      if(p->pid == page_pids.pid && page_pids.available == 0){
+        pte_t* vp = walkpgdir(p.pgdir, (void*)P2V(physicalAddress), 1);
+        // update the flags
+        *vp = ((blockno << 12) | PTE_FLAGS(*vp) | PTE_SO);
+        *vp = *vp & (~PTE_P);
+      }
+    }
+  }
+}
 // returns the victim proc
 struct proc *victim_proc()
 {
@@ -583,3 +596,4 @@ struct proc *victim_proc()
 //     unacc_proc(p->pgdir);
 //   }
 // }
+

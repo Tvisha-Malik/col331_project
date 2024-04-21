@@ -19,9 +19,10 @@ void swap_or_cow(void)
         panic("Invalid page fault zero");
         return;
     }
-    if ((*pgdir_adr & PTE_P) == 0) // page swappedout (swap it in)
+    if ((*pgdir_adr & PTE_SO) == 0) // page swapped out (swap it in)
     {
-        cprintf("is not present\n");
+        //cprintf("is not present\n");
+        swap_in_page();
     }
     if ((*pgdir_adr & PTE_W) == 0)
     {
@@ -50,5 +51,6 @@ void swap_or_cow(void)
           panic("is not user accessible \n");
 
     }
+
 
 }
