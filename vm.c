@@ -6,6 +6,7 @@
 #include "mmu.h"
 #include "proc.h"
 #include "elf.h"
+#include "fs.h"
 
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
@@ -287,9 +288,21 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz, int rss_update, int pid)
     // !CHECK - moved from lab 4
     else if (((*pte & PTE_P) == 0) && ((*pte & PTE_SO)!=0))
     {
-       uint block_id = (*pte >> PTXSHIFT);
-       *pte=*pte&(~PTE_SO);
-       swapfree(ROOTDEV, block_id);
+      uint block_id = (*pte >> PTXSHIFT);
+      struct swap_slot *slot = swapfind(ROOTDEV, block_id);
+
+      int count_procs = 0;
+      for (int i = 0; i < 64; i++){
+        if (slot->rmap_pid[i] != -1)
+          count_procs++;
+        if (slot->rmap_pid[i] == pid)
+          slot->rmap_pid[i] = -1;
+      }
+
+      *pte=*pte&(~PTE_SO);
+
+      if(count_procs == 1)// if only 1 process left accessing this page
+        swapfree(slot);
     }
   }
   return newsz;

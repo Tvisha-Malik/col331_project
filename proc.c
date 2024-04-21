@@ -586,17 +586,27 @@ struct proc *victim_proc()
 // }
 
 
-void update_proc_flags(uint physicalAddress, uint blockno, struct rmap_list* page_pids){
-  // struct proc *p;
+void update_flags_swap_out(uint physicalAddress, uint blockno, int pid){
 	for(struct proc *p=ptable.proc;p<&ptable.proc[NPROC];p++){ // Iterating through all the processes to find pid match
-  // for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-		p->rss -= PGSIZE; // as its page is swapped out
-		if(p->pid == page_pids->pid && page_pids->available == 0){
-			pte_t* vp = walkpgdir(p->pgdir, (void*)P2V(physicalAddress), 1);
+		if(p->pid == pid){
+			pte_t* vp = walkpgdir(p->pgdir, (void*)P2V(physicalAddress), 0);
 			// update the flags
+			p->rss -= PGSIZE; // as its page is swapped out
 			*vp = ((blockno << 12) | PTE_FLAGS(*vp) | PTE_SO);
 			*vp = *vp & (~PTE_P);
 		}
 	}
 }
 
+void update_flags_swap_in(uint physicalAddress, int pid)
+{
+	for(struct proc *p=ptable.proc;p<&ptable.proc[NPROC];p++){ // Iterating through all the processes to find pid match
+		if(p->pid == pid){
+			pte_t* vp = walkpgdir(p->pgdir, (void*)P2V(physicalAddress), 0);
+			// update the flags
+			p->rss += PGSIZE;
+			*vp = physicalAddress | PTE_FLAGS(*vp) | PTE_P; // setting the present bit as set
+			*vp = *vp & (~PTE_SO); // setting the swapped out bit as unset
+		}
+	}
+}

@@ -1,5 +1,6 @@
 // On-disk file system format.
 // Both the kernel and user programs use this header file.
+struct rmap_list; // from mmu.h
 
 
 #define ROOTINO 1  // root i-number
@@ -57,13 +58,16 @@ struct dirent {
   char name[DIRSIZ];
 };
 // represents eight consecutive disk blocks to store a page
+
 struct swap_slot
 {
   uint dev;   // Device number
   uint start; // Start block number
   int page_perm;
   int is_free;
+  int rmap_pid[64]; // stores rmap data of page
   // int pid;// for cleaning up the swap slots after process ends
 };
+
 #define SWAPSTART 2
 

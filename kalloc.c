@@ -8,6 +8,7 @@
 #include "mmu.h"
 #include "spinlock.h"
 #include "proc.h"
+#include "fs.h"
 
 struct rmap_list rmap[(PHYSTOP-EXTMEM)/PGSIZE][NPROC];// for virtual address, subtract kernbase+extmem and divide by pagesize
 
@@ -219,10 +220,30 @@ num_of_FreePages(void)
 }
 
 
-void swap_out_pids(uint physicalAddress, uint blockno){
-	struct rmap_list* page_pids;
+void update_rmap_swap_out(uint physicalAddress, uint blockno, struct swap_slot *slot){
   for(int i=0;i<NPROC;i++){ // Iterating through rmap slots
-    page_pids = &rmap[physicalAddress/PGSIZE][i];
-		update_proc_flags(physicalAddress, blockno, page_pids);
+    int pid = rmap[physicalAddress/PGSIZE][i].pid;
+    if (rmap[physicalAddress/PGSIZE][i].available == 1)
+      pid = -1;
+    slot->rmap_pid[i] = pid;
+    if (pid == -1)
+      continue;
+    update_flags_swap_out(physicalAddress, blockno, pid);
+    // clear the values stored in rmap
+    rmap[physicalAddress/PGSIZE][i].available = 1;
+  }
+}
+
+void update_rmap_swap_in(uint physicalAddress, struct swap_slot* slot){
+  for(int i=0;i<NPROC;i++){ // Iterating through rmap slots
+    int pid = slot->rmap_pid[i];
+    if (pid == -1)
+      rmap[physicalAddress/PGSIZE][i].available = 1;
+    else {
+      rmap[physicalAddress/PGSIZE][i].available = 0;
+      rmap[physicalAddress/PGSIZE][i].pid = pid;
+      update_flags_swap_in(physicalAddress, pid);
+    }
+    
   }
 }

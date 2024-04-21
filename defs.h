@@ -11,6 +11,7 @@ struct stat;
 struct superblock;
 struct victim_page;
 struct rmap_list;
+struct swap_slot;
 
 // bio.c
 void            binit(void);
@@ -72,11 +73,12 @@ uint            num_of_FreePages(void);
 void            kfree(char*, int ,int);
 void            kinit1(void*, void*);
 void            kinit2(void*, void*);
-void inc_rmap(char*, int);
-void dec_rmap(char*, int);
-int check_rmap(char*, int);
-int count_rmap(char*);
-void            swap_out_pids(uint, uint);
+void            inc_rmap(char*, int);
+void            dec_rmap(char*, int);
+int             check_rmap(char*, int);
+int             count_rmap(char*);
+void            update_rmap_swap_out(uint, uint, struct swap_slot *);
+void            update_rmap_swap_in(uint, struct swap_slot*);
 
 // kbd.c
 void            kbdintr(void);
@@ -104,9 +106,10 @@ void            mpinit(void);
 
 void swaparrayinit(int);
 struct swap_slot *swapalloc(void);
-void swapfree(int, int);
+struct swap_slot * swapfind(int, int);
+void swapfree(struct swap_slot *);
 void swap_out(void);
-void swap_out_page(pte_t *, uint, int);
+void swap_out_page(pte_t *, struct swap_slot *, int);
 void swap_in_page();
 
 // picirq.c
@@ -141,7 +144,8 @@ void            yield(void);
 void            print_rss(void);
 struct proc*    victim_proc(void);
 // void            update_proc_flags(uint, uint, struct rmap_list);
-void update_proc_flags(uint, uint, struct rmap_list*);
+void update_flags_swap_out(uint, uint, int);
+void update_flags_swap_in(uint, int);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
