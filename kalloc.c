@@ -10,12 +10,12 @@
 #include "proc.h"
 #include "fs.h"
 
-struct rmap_list rmap[(PHYSTOP-EXTMEM)/PGSIZE][NPROC];// for virtual address, subtract kernbase+extmem and divide by pagesize
+// struct rmap_list rmap[(PHYSTOP-EXTMEM)/PGSIZE][NPROC];// for virtual address, subtract kernbase+extmem and divide by pagesize
 
-// struct {
-//   struct spinlock lock;
-// 	struct rmap_list rmap[(PHYSTOP-EXTMEM)/PGSIZE][NPROC];// for virtual address, subtract kernbase+extmem and divide by pagesize
-// } rmap_table;
+struct {
+  struct spinlock lock;
+	struct rmap_list rmap[(PHYSTOP-EXTMEM)/PGSIZE][NPROC];// for virtual address, subtract kernbase+extmem and divide by pagesize
+} rmap_table;
 
 void freerange(void *vstart, void *vend);
 extern char end[]; // first address after kernel loaded from ELF file
@@ -37,20 +37,24 @@ struct {
 // the pages mapped by entrypgdir on free list.
 // 2. main() calls kinit2() with the rest of the physical pages
 // after installing a full page table that maps them on all cores.
-
+void lock_for_rmap(void)
+{
+  initlock(&rmap_table.lock, "rmap_table");
+}
 // For virtual addr v, process pid, it sets rmap of page of v as available for all processes except pid
 void init_rmap(char* v, int pid)
 {
   if(V2P(v)<EXTMEM)
     panic("init rmap\n");
   uint x=(V2P(v)-EXTMEM)/PGSIZE;
+  acquire(&rmap_table.lock);
   for(int i=0; i<NPROC;i++)
   {
-    rmap[x][i].available=1;
+    rmap_table.rmap[x][i].available=1;
   }
-  rmap[x][0].available=0;
-  rmap[x][0].pid=pid;
-
+  rmap_table.rmap[x][0].available=0;
+  rmap_table.rmap[x][0].pid=pid;
+  release(&rmap_table.lock);
 }
 
 // Checks if the page is set as unavailable for the process pid
@@ -60,12 +64,17 @@ int check_rmap(char* v, int pid)// 1 if present 0 otherwise
   if(V2P(v)<EXTMEM)
     panic("check rmap\n");
   uint x=(V2P(v)-EXTMEM)/PGSIZE;
+  acquire(&rmap_table.lock);
   for(int i=0; i<NPROC;i++)
   {
-    if((rmap[x][i].available==0) && (rmap[x][i].pid==pid))
-    return 1;
+    if((rmap_table.rmap[x][i].available==0) && (rmap_table.rmap[x][i].pid==pid))
+    {
+      release(&rmap_table.lock);
+      return 1;
+    }
     
   }
+  release(&rmap_table.lock);
   return 0;
   // panic("rmap dec not found \n");
 }
@@ -76,12 +85,14 @@ int count_rmap(char* v)
   if(V2P(v)<EXTMEM)
     panic("count_rmap\n");
   uint x=(V2P(v)-EXTMEM)/PGSIZE;
+  acquire(&rmap_table.lock);
   int ans=0;
   for(int i=0; i<NPROC; i++)
   {
-    if(rmap[x][i].available==0)// not available
+    if(rmap_table.rmap[x][i].available==0)// not available
     ans++;
   }
+  release(&rmap_table.lock);
   return ans;
 }
 
@@ -91,15 +102,18 @@ void inc_rmap(char* v, int pid)
   if(V2P(v)<EXTMEM)
     panic("inc rmap\n");
   uint x=(V2P(v)-EXTMEM)/PGSIZE;
+  acquire(&rmap_table.lock);
   for(int i=0; i<NPROC;i++)
   {
-    if(rmap[x][i].available==1)// if available
+    if(rmap_table.rmap[x][i].available==1)// if available
     {
-      rmap[x][i].available=0;
-      rmap[x][i].pid=pid;
+      rmap_table.rmap[x][i].available=0;
+      rmap_table.rmap[x][i].pid=pid;
+      release(&rmap_table.lock);
       return;
     }
   }
+  release(&rmap_table.lock);
   panic("not free rmap slot");
 }
 
@@ -109,14 +123,17 @@ void dec_rmap(char* v, int pid)
   if(V2P(v)<EXTMEM)
     panic("dec rmap\n");
   uint x=(V2P(v)-EXTMEM)/PGSIZE;
+  acquire(&rmap_table.lock);
   for(int i=0; i<NPROC;i++)
   {
-    if((rmap[x][i].available==0) && (rmap[x][i].pid==pid))
+    if((rmap_table.rmap[x][i].available==0) && (rmap_table.rmap[x][i].pid==pid))
     {
-      rmap[x][i].available=1;
+      rmap_table.rmap[x][i].available=1;
+      release(&rmap_table.lock);
       return;
     }
   }
+  release(&rmap_table.lock);
   panic("rmap dec not found \n");
 }
 
@@ -227,32 +244,36 @@ num_of_FreePages(void)
 
 
 void update_rmap_swap_out(int idx, uint physicalAddress, uint blockno, struct swap_slot *slot){
+   acquire(&rmap_table.lock);
   // uint physicalAddress = PTE_ADDR(*vp);
   physicalAddress-=EXTMEM;
   for(int i=0;i<NPROC;i++){ // Iterating through rmap slots
-    int pid = rmap[physicalAddress/PGSIZE][i].pid;
-    if (rmap[physicalAddress/PGSIZE][i].available == 1)
+    int pid = rmap_table.rmap[physicalAddress/PGSIZE][i].pid;
+    if (rmap_table.rmap[physicalAddress/PGSIZE][i].available == 1)
       pid = -1;
     slot->rmap_pid[i] = pid;
     if (pid == -1)
       continue;
     update_flags_swap_out(idx, blockno, pid);
     // clear the values stored in rmap
-    rmap[physicalAddress/PGSIZE][i].available = 1;
+    rmap_table.rmap[physicalAddress/PGSIZE][i].available = 1;
   }
+  release(&rmap_table.lock);
 }
 
 void update_rmap_swap_in(int idx, uint physicalAddress, struct swap_slot* slot){
+  acquire(&rmap_table.lock);
   physicalAddress-=EXTMEM;
   for(int i=0;i<NPROC;i++){ // Iterating through rmap slots
     int pid = slot->rmap_pid[i];
     if (pid == -1)
-      rmap[physicalAddress/PGSIZE][i].available = 1;
+      rmap_table.rmap[physicalAddress/PGSIZE][i].available = 1;
     else {
-      rmap[physicalAddress/PGSIZE][i].available = 0;
-      rmap[physicalAddress/PGSIZE][i].pid = pid;
+      rmap_table.rmap[physicalAddress/PGSIZE][i].available = 0;
+      rmap_table.rmap[physicalAddress/PGSIZE][i].pid = pid;
       update_flags_swap_in(idx, physicalAddress+EXTMEM, pid);
     }
     
   }
+  release(&rmap_table.lock);
 }
