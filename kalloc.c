@@ -50,10 +50,10 @@ void init_rmap(char* v, int pid)
   acquire(&rmap_table.lock);
   for(int i=0; i<NPROC;i++)
   {
-    rmap[x][i].available=1;
+    rmap_table.rmap[x][i].available=1;
   }
-  rmap[x][0].available=0;
-  rmap[x][0].pid=pid;
+  rmap_table.rmap[x][0].available=0;
+  rmap_table.rmap[x][0].pid=pid;
   release(&rmap_table.lock);
 }
 
@@ -67,7 +67,7 @@ int check_rmap(char* v, int pid)// 1 if present 0 otherwise
   acquire(&rmap_table.lock);
   for(int i=0; i<NPROC;i++)
   {
-    if((rmap[x][i].available==0) && (rmap[x][i].pid==pid))
+    if((rmap_table.rmap[x][i].available==0) && (rmap_table.rmap[x][i].pid==pid))
     {
       release(&rmap_table.lock);
       return 1;
@@ -89,7 +89,7 @@ int count_rmap(char* v)
   int ans=0;
   for(int i=0; i<NPROC; i++)
   {
-    if(rmap[x][i].available==0)// not available
+    if(rmap_table.rmap[x][i].available==0)// not available
     ans++;
   }
   release(&rmap_table.lock);
@@ -105,10 +105,10 @@ void inc_rmap(char* v, int pid)
   acquire(&rmap_table.lock);
   for(int i=0; i<NPROC;i++)
   {
-    if(rmap[x][i].available==1)// if available
+    if(rmap_table.rmap[x][i].available==1)// if available
     {
-      rmap[x][i].available=0;
-      rmap[x][i].pid=pid;
+      rmap_table.rmap[x][i].available=0;
+      rmap_table.rmap[x][i].pid=pid;
       release(&rmap_table.lock);
       return;
     }
@@ -126,9 +126,9 @@ void dec_rmap(char* v, int pid)
   acquire(&rmap_table.lock);
   for(int i=0; i<NPROC;i++)
   {
-    if((rmap[x][i].available==0) && (rmap[x][i].pid==pid))
+    if((rmap_table.rmap[x][i].available==0) && (rmap_table.rmap[x][i].pid==pid))
     {
-      rmap[x][i].available=1;
+      rmap_table.rmap[x][i].available=1;
       release(&rmap_table.lock);
       return;
     }
@@ -238,29 +238,33 @@ num_of_FreePages(void)
 
 
 void update_rmap_swap_out(uint physicalAddress, uint blockno, struct swap_slot *slot){
+   acquire(&rmap_table.lock);
   for(int i=0;i<NPROC;i++){ // Iterating through rmap slots
-    int pid = rmap[physicalAddress/PGSIZE][i].pid;
-    if (rmap[physicalAddress/PGSIZE][i].available == 1)
+    int pid = rmap_table.rmap[physicalAddress/PGSIZE][i].pid;
+    if (rmap_table.rmap[physicalAddress/PGSIZE][i].available == 1)
       pid = -1;
     slot->rmap_pid[i] = pid;
     if (pid == -1)
       continue;
     update_flags_swap_out(physicalAddress, blockno, pid);
     // clear the values stored in rmap
-    rmap[physicalAddress/PGSIZE][i].available = 1;
+    rmap_table.rmap[physicalAddress/PGSIZE][i].available = 1;
   }
+  release(&rmap_table.lock);
 }
 
 void update_rmap_swap_in(uint physicalAddress, struct swap_slot* slot){
+  acquire(&rmap_table.lock);
   for(int i=0;i<NPROC;i++){ // Iterating through rmap slots
     int pid = slot->rmap_pid[i];
     if (pid == -1)
-      rmap[physicalAddress/PGSIZE][i].available = 1;
+      rmap_table.rmap[physicalAddress/PGSIZE][i].available = 1;
     else {
-      rmap[physicalAddress/PGSIZE][i].available = 0;
-      rmap[physicalAddress/PGSIZE][i].pid = pid;
+      rmap_table.rmap[physicalAddress/PGSIZE][i].available = 0;
+      rmap_table.rmap[physicalAddress/PGSIZE][i].pid = pid;
       update_flags_swap_in(physicalAddress, pid);
     }
     
   }
+  release(&rmap_table.lock);
 }
