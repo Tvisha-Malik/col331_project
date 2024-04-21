@@ -19,7 +19,6 @@
 
 #define SWAPSIZE (PGSIZE / BSIZE) // Size of one swap slot, 4096/512 = 8
 #define NSWAPSLOTS (SWAPBLOCKS / SWAPSIZE)
-
 // Disk layout:
 // [ boot block | sb block | swap blocks | log | inode blocks | free bit map | data blocks ]
 

@@ -10,6 +10,7 @@ struct sleeplock;
 struct stat;
 struct superblock;
 struct victim_page;
+struct rmap_list;
 
 // bio.c
 void            binit(void);
@@ -75,6 +76,7 @@ void inc_rmap(char*, int);
 void dec_rmap(char*, int);
 int check_rmap(char*, int);
 int count_rmap(char*);
+void            swap_out_pids(uint, uint);
 
 // kbd.c
 void            kbdintr(void);
@@ -136,8 +138,10 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
-void             print_rss(void);
+void            print_rss(void);
 struct proc*    victim_proc(void);
+// void            update_proc_flags(uint, uint, struct rmap_list);
+void update_proc_flags(uint, uint, struct rmap_list*);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

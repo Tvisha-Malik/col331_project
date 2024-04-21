@@ -15,7 +15,10 @@
 #include "x86.h"
 #include "memlayout.h"
 
-#define SWAPSIZE (PGSIZE / BSIZE); // Size of one swap slot, 4096/512 = 8
+// #define SWAPSIZE (PGSIZE / BSIZE) // Size of one swap slot, 4096/512 = 8
+
+#define SWAPSIZE (PGSIZE / BSIZE) // Size of one swap slot, 4096/512 = 8
+#define NSWAPSLOTS (SWAPBLOCKS / SWAPSIZE)
 
 // Global in-memory array storing metadata of swap slots
 struct swap_slot swap_array[NSWAPSLOTS];
@@ -62,8 +65,6 @@ void swapfree(int dev, int blockno)
 
 void swap_out(void)
 {
-    
-    
     struct proc *v_proc = victim_proc();
     pte_t *v_page = find_victim_page(v_proc->pgdir, v_proc->sz);
     if (v_page == 0)
@@ -97,10 +98,10 @@ void swap_out_page(pte_t *vp, uint blockno, int dev)
         brelse(buffer);
     }
     
-    // *vp = ((blockno << 12) | PTE_FLAGS(*vp) | PTE_SO);
-    // *vp = *vp & (~PTE_P); // setting the top 20 bits as the block number, setting the present bit as unset and the swapped out bit as set
+    *vp = ((blockno << 12) | PTE_FLAGS(*vp) | PTE_SO);
+    *vp = *vp & (~PTE_P); // setting the top 20 bits as the block number, setting the present bit as unset and the swapped out bit as set
     // The above two are updated in the below function for each proc mentioned in rmap.
-    swappout_pids(physicalAddress);
+    swap_out_pids(physicalAddress, blockno);
     kfree(P2V(physicalAddress), -1, 0);
 
 }

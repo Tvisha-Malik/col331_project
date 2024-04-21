@@ -66,3 +66,4 @@ struct swap_slot
   // int pid;// for cleaning up the swap slots after process ends
 };
 #define SWAPSTART 2
+

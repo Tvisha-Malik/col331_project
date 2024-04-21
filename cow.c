@@ -19,7 +19,7 @@ void swap_or_cow(void)
         panic("Invalid page fault zero");
         return;
     }
-    if ((*pgdir_adr & PTE_SO) == 0) // page swapped out (swap it in)
+    if ((*pgdir_adr & PTE_SO)) // page swapped out (swap it in)
     {
         //cprintf("is not present\n");
         swap_in_page();
@@ -41,7 +41,7 @@ void swap_or_cow(void)
         p->rss += PGSIZE;                      // as new pages is allocated (take care of redundant copy)
         memmove(mem, (char *)P2V(pa), PGSIZE); // copy the pages to new address
         if(check_rmap(P2V(pa),p->pid)==0)
-        panic("no page mapped to it cow\n");
+            panic("no page mapped to it cow\n");
         dec_rmap(P2V(pa),p->pid);
         *pgdir_adr = V2P(mem) |PTE_W|flags; // update the page table entry
         // lcr3(V2P(p->pgdir));

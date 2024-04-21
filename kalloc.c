@@ -8,12 +8,13 @@
 #include "mmu.h"
 #include "spinlock.h"
 #include "proc.h"
-struct rmap_list 
-{
-  int pid;
-  int available;
-};
+
 struct rmap_list rmap[(PHYSTOP-EXTMEM)/PGSIZE][NPROC];// for virtual address, subtract kernbase+extmem and divide by pagesize
+
+// struct {
+//   struct spinlock lock;
+// 	struct rmap_list rmap[(PHYSTOP-EXTMEM)/PGSIZE][NPROC];// for virtual address, subtract kernbase+extmem and divide by pagesize
+// } rmap_table;
 
 void freerange(void *vstart, void *vend);
 extern char end[]; // first address after kernel loaded from ELF file
@@ -215,4 +216,13 @@ num_of_FreePages(void)
   release(&kmem.lock);
   
   return num_free_pages;
+}
+
+
+void swap_out_pids(uint physicalAddress, uint blockno){
+	struct rmap_list* page_pids;
+  for(int i=0;i<NPROC;i++){ // Iterating through rmap slots
+    page_pids = &rmap[physicalAddress/PGSIZE][i];
+		update_proc_flags(physicalAddress, blockno, page_pids);
+  }
 }
