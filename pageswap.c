@@ -31,6 +31,8 @@ void swaparrayinit(int dev)
         swap_array[i].is_free = 1;
         swap_array[i].start = SWAPSTART + i * SWAPSIZE;
         swap_array[i].dev = dev;
+		for (int j = 0; j < 64; j++)
+			swap_array[i].rmap_pid[j]=-1;
     }
 };
 
@@ -65,28 +67,10 @@ void swapfree(struct swap_slot *sw)
 	sw->is_free = 1;
 };
 
-void swap_out(void)
-{
-    struct proc *v_proc = victim_proc();
-    pte_t *v_page = find_victim_page(v_proc->pgdir, v_proc->sz);
-    if (v_page == 0)
-    {
-        unacc_proc(v_proc->pgdir);
-        v_page = find_victim_page(v_proc->pgdir, v_proc->sz);
-    }
-  
-    if (v_page == 0)
-        panic("still cant find victim page \n");
-    // v_proc->rss -= PGSIZE; // as its page is swapped out
-	// we are updating rss in update_proc_flags() later
-    struct swap_slot *slot = swapalloc();
-    swap_out_page(v_page, slot, slot->dev);
-    lcr3(V2P(v_proc->pgdir));
-}
-
-void swap_out_page(pte_t *vp, struct swap_slot *slot, int dev)
+void swap_out_page(int idx, struct proc* v_proc, struct swap_slot *slot, int dev)
 {
     uint blockno = slot->start;
+	pte_t* vp = walkpgdir(v_proc->pgdir, (void *)idx, 0);
     uint physicalAddress = PTE_ADDR(*vp);
     char *va = (char *)P2V(physicalAddress);
     struct buf *buffer;
@@ -104,10 +88,31 @@ void swap_out_page(pte_t *vp, struct swap_slot *slot, int dev)
     // *vp = ((blockno << 12) | PTE_FLAGS(*vp) | PTE_SO);
     // *vp = *vp & (~PTE_P); // setting the top 20 bits as the block number, setting the present bit as unset and the swapped out bit as set
     // The above two are updated in the below function for each proc mentioned in rmap.
-    update_rmap_swap_out(physicalAddress, blockno, slot);
+    update_rmap_swap_out(idx, physicalAddress, blockno, slot);
     kfree(P2V(physicalAddress), -1, 0);
 
 }
+
+void swap_out(void)
+{
+    struct proc *v_proc = victim_proc();
+    int idx = find_victim_page_idx(v_proc->pgdir, v_proc->sz);
+    if (idx == -1)
+    {
+        unacc_proc(v_proc->pgdir);
+        idx = find_victim_page_idx(v_proc->pgdir, v_proc->sz);
+    }
+  
+    if (idx == 0)
+        panic("still cant find victim page \n");
+    // v_proc->rss -= PGSIZE; // as its page is swapped out
+	// we are updating rss in update_proc_flags() later
+    struct swap_slot *slot = swapalloc();
+    swap_out_page(idx, v_proc, slot, slot->dev);
+    lcr3(V2P(v_proc->pgdir));
+}
+
+
 void disk_read(uint dev, char *page, int block)
 {
     struct buf *buffer;
@@ -155,7 +160,7 @@ void swap_in_page()
     // p->rss += PGSIZE;
     // *pgdir_adr = physicalAddress | PTE_FLAGS(*pgdir_adr) | PTE_P; // setting the present bit as set
     // *pgdir_adr = *pgdir_adr & (~PTE_SO); // setting the swapped out bit as unset
-	update_rmap_swap_in(physicalAddress, slot);
+	update_rmap_swap_in(vpage, physicalAddress, slot);
 	
     swapfree(slot);
 }

@@ -25,3 +25,8 @@ target remote localhost:1234
 
 echo + symbol-file kernel\n
 symbol-file kernel
+
+define setb
+  break cow.c:swap_or_cow
+  break vm.c:walkpgdir
+end

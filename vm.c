@@ -378,6 +378,52 @@ bad:
   return 0;
 }
 
+// version of copyuvm for no cow
+// pde_t* copyuvm(pde_t *pgdir, uint sz, int new_pid) {
+//   pde_t *d;
+//   pte_t *pte;
+//   uint pa, i;
+//   uint flags;
+//   char * mem;
+//
+//   if((d = setupkvm()) == 0)// this is necessary as page tables and page directories are allocated (they are not shared)
+//     return 0;
+//   for(i = 0; i < sz; i += PGSIZE){
+//     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
+//       panic("copyuvm: pte should exist");
+//     if(!(*pte & PTE_P))
+//       panic("copyuvm: page not present");
+//     
+//     
+//     // *pte=*pte&(~PTE_W);// unset the writeable permissions
+//     pa = PTE_ADDR(*pte);
+//     flags = PTE_FLAGS(*pte);// neeed to set both as unwriteable and shared
+//     // inc_rmap(P2V(pa), new_pid);// increment the rmap of the page
+//     if ((mem = kalloc(new_pid,1)) == 0)// a new page for the content
+//       goto bad;
+//     memmove(mem, (char *)P2V(pa), PGSIZE);// copy the page data
+//     if (mappages(d, (void *)i, PGSIZE, V2P(mem), flags) < 0)// add the entries in page directory and page table
+//     { //page table pages allocated if necessary
+//
+//       kfree(mem,-1,0);
+//       goto bad;
+//     }
+//
+//     // if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0) {
+//     //   // kfree(mem);
+//       
+//     //   goto bad;
+//     // }
+//
+//   }
+//   lcr3(V2P(pgdir)) ;
+//   return d;
+//
+// bad:
+//   freevm(d,1, -1);
+//   return 0;
+// }
+
 //PAGEBREAK!
 // Map user virtual address to kernel address.
 char*
@@ -421,7 +467,7 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
 
 // given a pgdir, find a page with pte_p set and pte_a unset
 // might have to change the return type
-pte_t *find_victim_page(pde_t *pgdir, uint sz)
+int find_victim_page_idx(pde_t *pgdir, uint sz)
 {
   pte_t *pgtab;
   pde_t *pde;
@@ -435,13 +481,14 @@ pte_t *find_victim_page(pde_t *pgdir, uint sz)
       victim = &pgtab[PTX(i)];
       if ((*victim & PTE_P) && !(*victim & PTE_A) && (*victim & PTE_U))
       {
-        return victim;
+        // return victim;
+        return i;
       }
     }
   }
   // *va_start=-1;
   // return 0;// no unaccesed pages
-  return 0;
+  return -1;
   //  pte_t *pte;
   // for(long i=4096; i<KERNBASE;i+=PGSIZE){    //for all pages in the user virtual space
   // //  cprintf("i wala loop\t");

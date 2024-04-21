@@ -586,10 +586,10 @@ struct proc *victim_proc()
 // }
 
 
-void update_flags_swap_out(uint physicalAddress, uint blockno, int pid){
+void update_flags_swap_out(int idx, uint blockno, int pid){
 	for(struct proc *p=ptable.proc;p<&ptable.proc[NPROC];p++){ // Iterating through all the processes to find pid match
 		if(p->pid == pid){
-			pte_t* vp = walkpgdir(p->pgdir, (void*)P2V(physicalAddress), 0);
+			pte_t* vp = walkpgdir(p->pgdir, (void*)idx, 0);
 			// update the flags
 			p->rss -= PGSIZE; // as its page is swapped out
 			*vp = ((blockno << 12) | PTE_FLAGS(*vp) | PTE_SO);
@@ -598,11 +598,11 @@ void update_flags_swap_out(uint physicalAddress, uint blockno, int pid){
 	}
 }
 
-void update_flags_swap_in(uint physicalAddress, int pid)
+void update_flags_swap_in(int idx, uint physicalAddress, int pid)
 {
 	for(struct proc *p=ptable.proc;p<&ptable.proc[NPROC];p++){ // Iterating through all the processes to find pid match
 		if(p->pid == pid){
-			pte_t* vp = walkpgdir(p->pgdir, (void*)P2V(physicalAddress), 0);
+			pte_t* vp = walkpgdir(p->pgdir, (void*)idx, 0);
 			// update the flags
 			p->rss += PGSIZE;
 			*vp = physicalAddress | PTE_FLAGS(*vp) | PTE_P; // setting the present bit as set

@@ -77,8 +77,8 @@ void            inc_rmap(char*, int);
 void            dec_rmap(char*, int);
 int             check_rmap(char*, int);
 int             count_rmap(char*);
-void            update_rmap_swap_out(uint, uint, struct swap_slot *);
-void            update_rmap_swap_in(uint, struct swap_slot*);
+void update_rmap_swap_out(int idx, uint physicalAddress, uint blockno, struct swap_slot *slot);
+void update_rmap_swap_in(int idx, uint physicalAddress, struct swap_slot* slot);
 
 // kbd.c
 void            kbdintr(void);
@@ -109,7 +109,7 @@ struct swap_slot *swapalloc(void);
 struct swap_slot * swapfind(int, int);
 void swapfree(struct swap_slot *);
 void swap_out(void);
-void swap_out_page(pte_t *, struct swap_slot *, int);
+// void swap_out_page(pte_t *, struct swap_slot *, int);
 void swap_in_page();
 
 // picirq.c
@@ -144,8 +144,8 @@ void            yield(void);
 void            print_rss(void);
 struct proc*    victim_proc(void);
 // void            update_proc_flags(uint, uint, struct rmap_list);
-void update_flags_swap_out(uint, uint, int);
-void update_flags_swap_in(uint, int);
+void update_flags_swap_out(int, uint, int);
+void update_flags_swap_in(int, uint, int);
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -211,7 +211,7 @@ void            switchuvm(struct proc*);
 void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
-pte_t*          find_victim_page(pde_t *, uint);
+int             find_victim_page_idx(pde_t *, uint);
 void            unacc_proc(pde_t *);
 pte_t*          walkpgdir(pde_t *, const void *, int);
 int             mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);

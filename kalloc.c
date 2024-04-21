@@ -192,6 +192,12 @@ kalloc(int pid, int set)
 {
   struct run *r;
 
+  while(!kmem.freelist)
+  {
+    cprintf("before swapout \n");
+    swap_out();
+  }
+
   if(kmem.use_lock)
     acquire(&kmem.lock);
   r = kmem.freelist;
@@ -220,7 +226,9 @@ num_of_FreePages(void)
 }
 
 
-void update_rmap_swap_out(uint physicalAddress, uint blockno, struct swap_slot *slot){
+void update_rmap_swap_out(int idx, uint physicalAddress, uint blockno, struct swap_slot *slot){
+  // uint physicalAddress = PTE_ADDR(*vp);
+  physicalAddress-=EXTMEM;
   for(int i=0;i<NPROC;i++){ // Iterating through rmap slots
     int pid = rmap[physicalAddress/PGSIZE][i].pid;
     if (rmap[physicalAddress/PGSIZE][i].available == 1)
@@ -228,13 +236,14 @@ void update_rmap_swap_out(uint physicalAddress, uint blockno, struct swap_slot *
     slot->rmap_pid[i] = pid;
     if (pid == -1)
       continue;
-    update_flags_swap_out(physicalAddress, blockno, pid);
+    update_flags_swap_out(idx, blockno, pid);
     // clear the values stored in rmap
     rmap[physicalAddress/PGSIZE][i].available = 1;
   }
 }
 
-void update_rmap_swap_in(uint physicalAddress, struct swap_slot* slot){
+void update_rmap_swap_in(int idx, uint physicalAddress, struct swap_slot* slot){
+  physicalAddress-=EXTMEM;
   for(int i=0;i<NPROC;i++){ // Iterating through rmap slots
     int pid = slot->rmap_pid[i];
     if (pid == -1)
@@ -242,7 +251,7 @@ void update_rmap_swap_in(uint physicalAddress, struct swap_slot* slot){
     else {
       rmap[physicalAddress/PGSIZE][i].available = 0;
       rmap[physicalAddress/PGSIZE][i].pid = pid;
-      update_flags_swap_in(physicalAddress, pid);
+      update_flags_swap_in(idx, physicalAddress+EXTMEM, pid);
     }
     
   }
