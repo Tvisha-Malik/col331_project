@@ -96,20 +96,27 @@ void swap_out_page(int idx, struct proc* v_proc, struct swap_slot *slot, int dev
 void swap_out(void)
 {
     struct proc *v_proc = victim_proc();
+    cprintf("the rss of v_proc is %d pages\n", (v_proc->rss)/PGSIZE);
+    if(v_proc->rss<=10*PGSIZE)
+    panic("too less pages\n");
     int idx = find_victim_page_idx(v_proc->pgdir, v_proc->sz);
     if (idx == -1)
     {
+        cprintf("here in id -1 %x\n",v_proc->name);
         unacc_proc(v_proc->pgdir);
+        //  lcr3(V2P(v_proc->pgdir));
+        lcr3(V2P(myproc()->pgdir));
         idx = find_victim_page_idx(v_proc->pgdir, v_proc->sz);
+        cprintf("here in id -1 %x\n",v_proc->name);
     }
   
-    if (idx == 0)
+    if (idx < 0)
         panic("still cant find victim page \n");
     // v_proc->rss -= PGSIZE; // as its page is swapped out
 	// we are updating rss in update_proc_flags() later
     struct swap_slot *slot = swapalloc();
     swap_out_page(idx, v_proc, slot, slot->dev);
-    lcr3(V2P(v_proc->pgdir));
+    lcr3(V2P(myproc()->pgdir));
 }
 
 
@@ -139,7 +146,7 @@ void swap_in_page()
     pte_t *pgdir_adr = walkpgdir(p->pgdir, (void *)vpage, 0);
     if (!pgdir_adr)
     {
-        panic("Invalid page fault zero");
+        panic("Invalid page fault so");
         return;
     }
     if ((*pgdir_adr & PTE_P))

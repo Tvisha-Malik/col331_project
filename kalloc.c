@@ -214,7 +214,7 @@ kalloc(int pid, int set)
     // cprintf("before swapout \n");
     swap_out();
   }
-
+// cprintf("after swapout \n");
   if(kmem.use_lock)
     acquire(&kmem.lock);
   r = kmem.freelist;

@@ -362,6 +362,7 @@ copyuvm(pde_t *pgdir, uint sz, int new_pid)
     *pte=*pte&(~PTE_W);// unset the writeable permissions
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);// neeed to set both as unwriteable and shared
+    //  curproc->rss+=PGSIZE;
     inc_rmap(P2V(pa), new_pid);// increment the rmap of the page
     if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0) {
       // kfree(mem);
@@ -515,6 +516,7 @@ void unacc_proc(pde_t *pgdir)
   pde_t *pde;
   pte_t *victim;
   int counter = 0;
+  int actual_c=0;
   for (int i = 0; i < 1024; i++) // go to the page directory entry ie the page table
   {
     pde = &pgdir[i];
@@ -524,18 +526,23 @@ void unacc_proc(pde_t *pgdir)
       for (int j = 0; j < 1024; j++)
       {
         victim = &pgtab[j]; // iterate through the entries in the page table
-        if ((*victim & PTE_P) && (*victim & PTE_A)) // if its present and acessed bit is set,
+        if ((*victim & PTE_P) && (*victim & PTE_A) && (*victim & PTE_U)) // if its present and acessed bit is set,
         {
           counter++; // increase counter
+       
           if (counter == 10) // unset 10 percent of the pages, that is every 10th page
           {
             counter = 0;
+               actual_c++;
             *victim = *victim & (~PTE_A);
           }
         }
       }
     }
   }
+ if(actual_c==0)
+ {panic("non un acced\n");}
+  cprintf("pages unacced %d\n", actual_c);
 }
 
 // PAGEBREAK!

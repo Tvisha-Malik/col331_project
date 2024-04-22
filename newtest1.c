@@ -26,7 +26,7 @@ void print_free_pages(){
 void
 mem(void)
 {
-    printf(1,"Test Started");    
+    printf(1,"Test Started\n");    
     int pid;
     uint prev_free_pages = getNumFreePages();
     long long size = ((prev_free_pages - 20) * 4096);
@@ -69,8 +69,9 @@ mem(void)
                 goto failed;
             }
         }
-
+printf(1,"before wait\n");
         wait();
+        
 
         for(int i = 0; i < 50 * 4096; i++){
             if (parent_malloc[i] != (char) (65 + i % 26)){
@@ -106,11 +107,11 @@ mem(void)
 
     else {
         sleep(100);
-
+  
         print_free_pages();
 
         char* malloc_child = (char*) malloc(size);
-
+printf(1,"Child after sleep\n");
         print_free_pages();
 
         for(int i = 0; i < size; i++){

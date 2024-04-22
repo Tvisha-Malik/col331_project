@@ -197,6 +197,7 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+  np->rss=curproc->rss;
   // assuming all the pages of this process will be in memory
   // this includes the page directory (already considered)
   // the page tables corresponding to the pages

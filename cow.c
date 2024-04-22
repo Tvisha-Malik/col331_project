@@ -12,7 +12,7 @@ void swap_or_cow(void)
     char *mem;
     struct proc *p = myproc();
     uint vpage = rcr2();
-    //  cprintf("the page is %x\n",vpage);
+     cprintf("the page is %x\n",vpage);
     pte_t *pgdir_adr = walkpgdir(p->pgdir, (void *)vpage, 0);
     if (!pgdir_adr)
     {
