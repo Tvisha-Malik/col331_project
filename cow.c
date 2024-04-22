@@ -24,8 +24,10 @@ void swap_or_cow(void)
         //cprintf("is not present\n");
         swap_in_page();
     }
-    if ((*pgdir_adr & PTE_W) == 0)
+    else if ((*pgdir_adr & PTE_W) == 0)
     {
+        // panic("is not writeable \n");
+        // cprintf("is not writeable\n");
         pa = PTE_ADDR(*pgdir_adr);
         flags = PTE_FLAGS(*pgdir_adr);
         
@@ -44,6 +46,7 @@ void swap_or_cow(void)
             panic("no page mapped to it cow\n");
         dec_rmap(P2V(pa),p->pid);
         *pgdir_adr = V2P(mem) |PTE_W|flags; // update the page table entry
+        // cprintf("is not writeable end\n");
         // lcr3(V2P(p->pgdir));
     }
     if((*pgdir_adr & PTE_U) == 0)
