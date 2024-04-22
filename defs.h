@@ -112,6 +112,7 @@ void swapfree(struct swap_slot *);
 void swap_out(void);
 // void swap_out_page(pte_t *, struct swap_slot *, int);
 void swap_in_page();
+void swap_in_this_page(int pid, pde_t *pgdir, uint vpage);
 
 // picirq.c
 void            picenable(int);

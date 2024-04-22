@@ -98,7 +98,7 @@ void swap_out(void)
     struct proc *v_proc = victim_proc();
     // cprintf("the rss of v_proc is %d pages\n", (v_proc->rss)/PGSIZE);
     if(v_proc->rss<=10*PGSIZE)
-    panic("too less pages\n");
+        panic("too less pages\n");
     int idx = find_victim_page_idx(v_proc->pgdir, v_proc->sz);
     if (idx == -1)
     {
@@ -137,6 +137,36 @@ void disk_read(uint dev, char *page, int block)
 }
 
 
+void swap_in_this_page(int pid, pde_t *pgdir, uint vpage){
+
+    pte_t *pgdir_adr = walkpgdir(pgdir, (void *)vpage, 0);
+    if (!pgdir_adr)
+    {
+        panic("Invalid page fault so");
+        return;
+    }
+    if ((*pgdir_adr & PTE_P))
+    {
+        panic("Invalid page fault present");
+        return;
+    }
+    uint block_id = (*pgdir_adr >> PTXSHIFT);
+    char *phy_page = kalloc(pid,1);
+    if (phy_page == 0)
+    {
+        panic("Failed to allocate memory for swapped in page");
+        return;
+    }
+    disk_read(ROOTDEV, phy_page, (int)block_id);
+	uint physicalAddress = V2P(phy_page);
+	struct swap_slot *slot = swapfind(ROOTDEV, block_id);
+    // p->rss += PGSIZE;
+    // *pgdir_adr = physicalAddress | PTE_FLAGS(*pgdir_adr) | PTE_P; // setting the present bit as set
+    // *pgdir_adr = *pgdir_adr & (~PTE_SO); // setting the swapped out bit as unset
+	update_rmap_swap_in(vpage, physicalAddress, slot);
+	
+    swapfree(slot);
+}
 
 void swap_in_page()
 {

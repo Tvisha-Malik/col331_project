@@ -28,5 +28,6 @@ symbol-file kernel
 
 define setb
   break cow.c:swap_or_cow
-  break vm.c:walkpgdir
+  # break vm.c:walkpgdir
+  break vm.c:find_victim_page_idx
 end

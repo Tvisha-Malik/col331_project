@@ -40,7 +40,7 @@ void swap_or_cow(void)
         {
             panic("cant kalloc in page_fault\n");
         }
-                      // as new pages is allocated (take care of redundant copy)
+        // p->rss += PGSIZE;                      // as new pages is allocated (take care of redundant copy)
         memmove(mem, (char *)P2V(pa), PGSIZE); // copy the pages to new address
         if(check_rmap(P2V(pa),p->pid)==0)
             panic("no page mapped to it cow\n");

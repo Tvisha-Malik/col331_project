@@ -356,7 +356,8 @@ copyuvm(pde_t *pgdir, uint sz, int new_pid)
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
     if(!(*pte & PTE_P))
-      panic("copyuvm: page not present");
+      swap_in_this_page(new_pid, pgdir, i);
+      // panic("copyuvm: page not present");
     
     
     *pte=*pte&(~PTE_W);// unset the writeable permissions
@@ -473,7 +474,7 @@ int find_victim_page_idx(pde_t *pgdir, uint sz)
   pte_t *pgtab;
   pde_t *pde;
   pte_t *victim;
-  int count_pages=0;
+  // int count_pages=0;
   for (uint i = 0; i < sz; i += PGSIZE)
   {
     pde = &pgdir[PDX(i)];
@@ -484,7 +485,7 @@ int find_victim_page_idx(pde_t *pgdir, uint sz)
       if ((*victim & PTE_P) && (*victim & PTE_U))
       {
         // return victim;
-        count_pages++;
+        // count_pages++;
         if((*victim & PTE_A)==0)
         return i;
       }
@@ -563,7 +564,7 @@ void unacc_proc(pde_t *pgdir, int sz)
 //  {cprintf("non un acced  count of present and user %d,c_p %d, c_a %d, c_u %d, counter p %d\n",c_pu, c_p, c_a,c_u, counter_p);
 //   panic("non un acced");}
 //   cprintf("pages unacced %d\n", actual_c);
-pte_t *pgtab;
+  pte_t *pgtab;
   pde_t *pde;
   pte_t *victim;
   for (uint i = 0; i < sz; i += PGSIZE)
@@ -588,15 +589,16 @@ pte_t *pgtab;
         if (counter == 10) // unset 10 percent of the pages, that is every 10th page
           {
             counter = 0;
-               actual_c++;
+            actual_c++;
             *victim = *victim & (~PTE_A);
           }
 
       }
     }}
     if(actual_c==0)
- {cprintf("non un acced  count of present and user %d,c_p %d, c_a %d, c_u %d, counter p %d\n",c_pu, c_p, c_a,c_u, counter_p);
-  panic("non un acced");}
+  {
+    cprintf("non un acced  count of present and user %d,c_p %d, c_a %d, c_u %d, counter p %d\n",c_pu, c_p, c_a,c_u, counter_p);
+    panic("non un acced");}
   // cprintf("pages unacced %d\n", actual_c);
 }
 
