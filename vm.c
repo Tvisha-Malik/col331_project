@@ -517,6 +517,10 @@ void unacc_proc(pde_t *pgdir)
   pte_t *victim;
   int counter = 0;
   int actual_c=0;
+  int c_p=0;
+  int c_a=0;
+  int c_u=0;
+  int counter_p=0;
   for (int i = 0; i < 1024; i++) // go to the page directory entry ie the page table
   {
     pde = &pgdir[i];
@@ -526,9 +530,16 @@ void unacc_proc(pde_t *pgdir)
       for (int j = 0; j < 1024; j++)
       {
         victim = &pgtab[j]; // iterate through the entries in the page table
+        if((*victim & PTE_P))
+        c_p++;
+        if((*victim & PTE_A))
+        c_a++;
+        if((*victim & PTE_U))
+        c_u++;
         if ((*victim & PTE_P) && (*victim & PTE_A) && (*victim & PTE_U)) // if its present and acessed bit is set,
         {
           counter++; // increase counter
+          counter_p++;
        
           if (counter == 10) // unset 10 percent of the pages, that is every 10th page
           {
@@ -541,7 +552,8 @@ void unacc_proc(pde_t *pgdir)
     }
   }
  if(actual_c==0)
- {panic("non un acced\n");}
+ {cprintf("non un acced  c_p %d, c_a %d, c_u %d, counter p %d\n", c_p, c_a,c_u, counter_p);
+  panic("non un acced");}
   cprintf("pages unacced %d\n", actual_c);
 }
 
