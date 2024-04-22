@@ -31,8 +31,8 @@ void swaparrayinit(int dev)
         swap_array[i].is_free = 1;
         swap_array[i].start = SWAPSTART + i * SWAPSIZE;
         swap_array[i].dev = dev;
-		for (int j = 0; j < 64; j++)
-			swap_array[i].rmap_pid[j]=-1;
+        for (int j = 0; j < 64; j++)
+            swap_array[i].rmap_pid[j]=-1;
     }
 };
 
@@ -62,15 +62,15 @@ struct swap_slot * swapfind(int dev, int blockno)
 
 void swapfree(struct swap_slot *sw)
 {
-	if (sw->is_free == 1)
-		panic("swapfree: slot already free");
-	sw->is_free = 1;
+    if (sw->is_free == 1)
+        panic("swapfree: slot already free");
+    sw->is_free = 1;
 };
 
 void swap_out_page(int idx, struct proc* v_proc, struct swap_slot *slot, int dev)
 {
     uint blockno = slot->start;
-	pte_t* vp = walkpgdir(v_proc->pgdir, (void *)idx, 0);
+    pte_t* vp = walkpgdir(v_proc->pgdir, (void *)idx, 0);
     uint physicalAddress = PTE_ADDR(*vp);
     char *va = (char *)P2V(physicalAddress);
     struct buf *buffer;
@@ -113,7 +113,7 @@ void swap_out(void)
     if (idx < 0)
         panic("still cant find victim page \n");
     // v_proc->rss -= PGSIZE; // as its page is swapped out
-	// we are updating rss in update_proc_flags() later
+    // we are updating rss in update_proc_flags() later
     struct swap_slot *slot = swapalloc();
     swap_out_page(idx, v_proc, slot, slot->dev);
     lcr3(V2P(myproc()->pgdir));
@@ -136,36 +136,18 @@ void disk_read(uint dev, char *page, int block)
     }
 }
 
-
-void swap_in_this_page(int pid, pde_t *pgdir, uint vpage){
-
-    pte_t *pgdir_adr = walkpgdir(pgdir, (void *)vpage, 0);
-    if (!pgdir_adr)
-    {
-        panic("Invalid page fault so");
-        return;
-    }
-    if ((*pgdir_adr & PTE_P))
-    {
-        panic("Invalid page fault present");
-        return;
-    }
+void update_swap_rmap_pid(int pid, pte_t *pgdir_adr){
     uint block_id = (*pgdir_adr >> PTXSHIFT);
-    char *phy_page = kalloc(pid,1);
-    if (phy_page == 0)
+    struct swap_slot *slot = swapfind(ROOTDEV, block_id);
+    for(int i=0; i < NPROC; i++)
     {
-        panic("Failed to allocate memory for swapped in page");
-        return;
+        if(slot->rmap_pid[i] == -1)
+        {
+            slot->rmap_pid[i] = pid;
+            return;
+        }
     }
-    disk_read(ROOTDEV, phy_page, (int)block_id);
-	uint physicalAddress = V2P(phy_page);
-	struct swap_slot *slot = swapfind(ROOTDEV, block_id);
-    // p->rss += PGSIZE;
-    // *pgdir_adr = physicalAddress | PTE_FLAGS(*pgdir_adr) | PTE_P; // setting the present bit as set
-    // *pgdir_adr = *pgdir_adr & (~PTE_SO); // setting the swapped out bit as unset
-	update_rmap_swap_in(vpage, physicalAddress, slot);
-	
-    swapfree(slot);
+    panic("No space in swapslot");
 }
 
 void swap_in_page()
@@ -192,12 +174,12 @@ void swap_in_page()
         return;
     }
     disk_read(ROOTDEV, phy_page, (int)block_id);
-	uint physicalAddress = V2P(phy_page);
-	struct swap_slot *slot = swapfind(ROOTDEV, block_id);
+    uint physicalAddress = V2P(phy_page);
+    struct swap_slot *slot = swapfind(ROOTDEV, block_id);
     // p->rss += PGSIZE;
     // *pgdir_adr = physicalAddress | PTE_FLAGS(*pgdir_adr) | PTE_P; // setting the present bit as set
     // *pgdir_adr = *pgdir_adr & (~PTE_SO); // setting the swapped out bit as unset
-	update_rmap_swap_in(vpage, physicalAddress, slot);
-	
+    update_rmap_swap_in(vpage, physicalAddress, slot);
+    
     swapfree(slot);
 }

@@ -112,7 +112,7 @@ void swapfree(struct swap_slot *);
 void swap_out(void);
 // void swap_out_page(pte_t *, struct swap_slot *, int);
 void swap_in_page();
-void swap_in_this_page(int pid, pde_t *pgdir, uint vpage);
+void update_swap_rmap_pid(int, pte_t *);
 
 // picirq.c
 void            picenable(int);
@@ -216,7 +216,7 @@ void            clearpteu(pde_t *pgdir, char *uva);
 int             find_victim_page_idx(pde_t *, uint);
 void            unacc_proc(pde_t *, int);
 pte_t*          walkpgdir(pde_t *, const void *, int);
-int             mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
+int             mappages(pde_t *, void *, uint, uint, int, int);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

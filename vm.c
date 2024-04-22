@@ -61,7 +61,7 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc)
 // physical addresses starting at pa. va and size might not
 // be page-aligned.
 int
-mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
+mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm, int set_P)
 {
   char *a, *last;
   pte_t *pte;
@@ -73,7 +73,9 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
       return -1;
     if(*pte & PTE_P)
       panic("remap");
-    *pte = pa | perm | PTE_P;
+    *pte = pa | perm;
+    if (set_P)
+      *pte |= PTE_P;
     if(a == last)
       break;
     a += PGSIZE;
@@ -131,7 +133,7 @@ setupkvm(void)
     panic("PHYSTOP too high");
   for(k = kmap; k < &kmap[NELEM(kmap)]; k++)
     if(mappages(pgdir, k->virt, k->phys_end - k->phys_start,
-                (uint)k->phys_start, k->perm) < 0) {
+                (uint)k->phys_start, k->perm, 1) < 0) {
       freevm(pgdir,1,-1);// if -1 ignore
       return 0;
     }
@@ -191,7 +193,7 @@ inituvm(pde_t *pgdir, char *init, uint sz, int pid)
     panic("inituvm: more than a page");
   mem = kalloc(pid,1);
   memset(mem, 0, PGSIZE);
-  mappages(pgdir, 0, PGSIZE, V2P(mem), PTE_W|PTE_U);
+  mappages(pgdir, 0, PGSIZE, V2P(mem), PTE_W|PTE_U, 1);
   memmove(mem, init, sz);
 }
 
@@ -243,7 +245,7 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz, int update_sz)
     }
     memset(mem, 0, PGSIZE);
     curproc->rss+=PGSIZE;
-    if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
+    if(mappages(pgdir, (char*)a, PGSIZE, V2P(mem), PTE_W|PTE_U, 1) < 0){
       cprintf("allocuvm out of memory (2)\n");
       deallocuvm(pgdir, newsz, oldsz,1, -1);
       kfree(mem,curproc->pid,1);
@@ -357,21 +359,32 @@ copyuvm(pde_t *pgdir, uint sz, int new_pid)
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
-    if(!(*pte & PTE_P))
-      swap_in_this_page(new_pid, pgdir, i);
-      // panic("copyuvm: page not present");
-    
+
     
     *pte=*pte&(~PTE_W);// unset the writeable permissions
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);// neeed to set both as unwriteable and shared
-    //  curproc->rss+=PGSIZE;
-    inc_rmap(P2V(pa), new_pid);// increment the rmap of the page
-    if(mappages(d, (void*)i, PGSIZE, pa, flags) < 0) {
+
+    if((*pte & PTE_SO))
+    {
+      update_swap_rmap_pid(new_pid, pte);
+      if(mappages(d, (void*)i, PGSIZE, pa, flags, 0) < 0) {
+        // kfree(mem);
+        goto bad;
+    }
+    }
+    else if(!(*pte & PTE_P))
+      // if not swapped out and not present either
+      panic("copyuvm: page not present");
+    else
+    {
+      inc_rmap(P2V(pa), new_pid);// increment the rmap of the page
+    if(mappages(d, (void*)i, PGSIZE, pa, flags, 1) < 0) {
       // kfree(mem);
-      
       goto bad;
     }
+    }
+    // curproc->rss+=PGSIZE;
 
   }
   lcr3(V2P(pgdir)) ;
