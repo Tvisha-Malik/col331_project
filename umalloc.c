@@ -99,7 +99,7 @@ malloc(uint nbytes)
     }
     if(p == freep)
     {
-      printf(1,"here malloc\n");
+      // printf(1,"here malloc\n");
       if((p = morecore(nunits)) == 0)
         return 0;}
   }

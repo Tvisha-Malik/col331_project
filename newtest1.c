@@ -124,7 +124,9 @@ printf(1,"Child after sleep\n");
             if (outer_malloc[i] != (char) (65 + i % 26)){
                 goto failed;
             }
-        }   
+        }  
+
+          printf(1,"Child after last loop\n");
     }
 
     if(pid > 0)

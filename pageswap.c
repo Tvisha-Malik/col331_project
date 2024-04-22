@@ -96,18 +96,18 @@ void swap_out_page(int idx, struct proc* v_proc, struct swap_slot *slot, int dev
 void swap_out(void)
 {
     struct proc *v_proc = victim_proc();
-    cprintf("the rss of v_proc is %d pages\n", (v_proc->rss)/PGSIZE);
+    // cprintf("the rss of v_proc is %d pages\n", (v_proc->rss)/PGSIZE);
     if(v_proc->rss<=10*PGSIZE)
     panic("too less pages\n");
     int idx = find_victim_page_idx(v_proc->pgdir, v_proc->sz);
     if (idx == -1)
     {
-        cprintf("here in id -1 %x\n",v_proc->name);
-        unacc_proc(v_proc->pgdir);
+        // cprintf("here in id -1 %x\n",v_proc->name);
+        unacc_proc(v_proc->pgdir, v_proc->sz);
         //  lcr3(V2P(v_proc->pgdir));
         lcr3(V2P(myproc()->pgdir));
         idx = find_victim_page_idx(v_proc->pgdir, v_proc->sz);
-        cprintf("here in id -1 %x\n",v_proc->name);
+        // cprintf("here in id -1 %x\n",v_proc->name);
     }
   
     if (idx < 0)

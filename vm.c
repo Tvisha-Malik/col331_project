@@ -473,6 +473,7 @@ int find_victim_page_idx(pde_t *pgdir, uint sz)
   pte_t *pgtab;
   pde_t *pde;
   pte_t *victim;
+  int count_pages=0;
   for (uint i = 0; i < sz; i += PGSIZE)
   {
     pde = &pgdir[PDX(i)];
@@ -480,15 +481,19 @@ int find_victim_page_idx(pde_t *pgdir, uint sz)
     {
       pgtab = (pte_t *)P2V(PTE_ADDR(*pde));
       victim = &pgtab[PTX(i)];
-      if ((*victim & PTE_P) && !(*victim & PTE_A) && (*victim & PTE_U))
+      if ((*victim & PTE_P) && (*victim & PTE_U))
       {
         // return victim;
+        count_pages++;
+        if((*victim & PTE_A)==0)
         return i;
       }
     }
   }
   // *va_start=-1;
   // return 0;// no unaccesed pages
+  // cprintf(" the count pafe in victim proc is %d\n", count_pages);
+  
   return -1;
   //  pte_t *pte;
   // for(long i=4096; i<KERNBASE;i+=PGSIZE){    //for all pages in the user virtual space
@@ -510,51 +515,89 @@ int find_victim_page_idx(pde_t *pgdir, uint sz)
   // return 0;
 }
 
-void unacc_proc(pde_t *pgdir)
+void unacc_proc(pde_t *pgdir, int sz)
 {
-  pte_t *pgtab;
-  pde_t *pde;
-  pte_t *victim;
-  int counter = 0;
+//   pte_t *pgtab;
+//   pde_t *pde;
+//   pte_t *victim;
+  int counter = 9;
   int actual_c=0;
   int c_p=0;
   int c_a=0;
   int c_u=0;
   int counter_p=0;
-  for (int i = 0; i < 1024; i++) // go to the page directory entry ie the page table
-  {
-    pde = &pgdir[i];
-    if (*pde & PTE_P) // if the directory entry is present,
-    {
-      pgtab = (pte_t *)P2V(PTE_ADDR(*pde)); // go to the page table
-      for (int j = 0; j < 1024; j++)
-      {
-        victim = &pgtab[j]; // iterate through the entries in the page table
-        if((*victim & PTE_P))
-        c_p++;
-        if((*victim & PTE_A))
-        c_a++;
-        if((*victim & PTE_U))
-        c_u++;
-        if ((*victim & PTE_P) && (*victim & PTE_A) && (*victim & PTE_U)) // if its present and acessed bit is set,
-        {
-          counter++; // increase counter
-          counter_p++;
+  int c_pu=0;
+//   for (int i = 0; i < 1024; i++) // go to the page directory entry ie the page table
+//   {
+//     pde = &pgdir[i];
+//     if (*pde & PTE_P) // if the directory entry is present,
+//     {
+//       pgtab = (pte_t *)P2V(PTE_ADDR(*pde)); // go to the page table
+//       for (int j = 0; j < 1024; j++)
+//       {
+//         victim = &pgtab[j]; // iterate through the entries in the page table
+//         if((*victim & PTE_P))
+//         c_p++;
+//         if((*victim & PTE_A))
+//         c_a++;
+//         if((*victim & PTE_U))
+//         c_u++;
+//         if((*victim & PTE_P) && (*victim & PTE_U) && !(*victim & PTE_A))
+//         c_pu++;
+//         if ((*victim & PTE_P) && (*victim & PTE_A) && (*victim & PTE_U)) // if its present and acessed bit is set,
+//         {
+//           counter++; // increase counter
+//           counter_p++;
        
-          if (counter == 10) // unset 10 percent of the pages, that is every 10th page
+//           if (counter == 10) // unset 10 percent of the pages, that is every 10th page
+//           {
+//             counter = 0;
+//                actual_c++;
+//             *victim = *victim & (~PTE_A);
+//           }
+//         }
+//       }
+//     }
+//   }
+//  if(actual_c==0)
+//  {cprintf("non un acced  count of present and user %d,c_p %d, c_a %d, c_u %d, counter p %d\n",c_pu, c_p, c_a,c_u, counter_p);
+//   panic("non un acced");}
+//   cprintf("pages unacced %d\n", actual_c);
+pte_t *pgtab;
+  pde_t *pde;
+  pte_t *victim;
+  for (uint i = 0; i < sz; i += PGSIZE)
+  {
+    pde = &pgdir[PDX(i)];
+    if (*pde & PTE_P)
+    {
+      pgtab = (pte_t *)P2V(PTE_ADDR(*pde));
+      victim = &pgtab[PTX(i)];
+      if((*victim & PTE_P))
+        c_p++;
+      if((*victim & PTE_A))
+        c_a++;
+      if((*victim & PTE_U))
+        c_u++;
+      if((*victim & PTE_P) && (*victim & PTE_U) )
+        c_pu++;
+      if ((*victim & PTE_P) && (*victim & PTE_U) && (*victim & PTE_A))
+      {
+        counter++;
+        counter_p++;
+        if (counter == 10) // unset 10 percent of the pages, that is every 10th page
           {
             counter = 0;
                actual_c++;
             *victim = *victim & (~PTE_A);
           }
-        }
+
       }
-    }
-  }
- if(actual_c==0)
- {cprintf("non un acced  c_p %d, c_a %d, c_u %d, counter p %d\n", c_p, c_a,c_u, counter_p);
+    }}
+    if(actual_c==0)
+ {cprintf("non un acced  count of present and user %d,c_p %d, c_a %d, c_u %d, counter p %d\n",c_pu, c_p, c_a,c_u, counter_p);
   panic("non un acced");}
-  cprintf("pages unacced %d\n", actual_c);
+  // cprintf("pages unacced %d\n", actual_c);
 }
 
 // PAGEBREAK!

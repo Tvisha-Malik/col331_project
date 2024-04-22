@@ -554,24 +554,53 @@ procdump(void)
   }
 }
 
-
+int present_user(struct proc * process)
+{
+   pte_t *pgtab;
+  pde_t *pde;
+  pte_t *victim;
+  int count_pages=0;
+  int sz=process->sz;
+  pde_t* pgdir= process->pgdir;
+   for (uint i = 0; i < sz; i += PGSIZE)
+  {
+    pde = &pgdir[PDX(i)];
+    if (*pde & PTE_P)
+    {
+      pgtab = (pte_t *)P2V(PTE_ADDR(*pde));
+      victim = &pgtab[PTX(i)];
+      if ((*victim & PTE_P) && (*victim & PTE_U))
+      {
+        // return victim;
+        count_pages++;
+      }
+    }
+  }
+  return count_pages;
+}
 // returns the victim proc
 struct proc *victim_proc()
 {
   struct proc *p = 0;
   struct proc *vict = ptable.proc;
+  int max_pu=0;
+  int temp_pu;
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
   {
     if (p->state == UNUSED) // only runnable and running processes can be choosen as victim
       continue;
-    if ((vict->state==UNUSED)||(p->rss > vict->rss) || ((p->rss == vict->rss) && (p->pid < vict->pid)))
+    temp_pu=present_user(p);
+    if ((vict->state==UNUSED)||( temp_pu> max_pu) || ((temp_pu == max_pu) && (p->pid < vict->pid)))
     {
       vict = p;
+      max_pu=temp_pu;
     }
   }
   //    cprintf("no victim proc found in vict proc \n");
   if (vict->state==UNUSED)
     panic("no victim process found");
+  if(max_pu==0)
+  panic ("no present user processes anywhere\n");
   return vict;
 }
 

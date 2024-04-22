@@ -213,7 +213,7 @@ void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 int             find_victim_page_idx(pde_t *, uint);
-void            unacc_proc(pde_t *);
+void            unacc_proc(pde_t *, int);
 pte_t*          walkpgdir(pde_t *, const void *, int);
 int             mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
 
